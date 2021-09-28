@@ -307,5 +307,5 @@ class Player:
 
 if __name__ == '__main__':
     
-    start(IceCreamGame, port=8080, start_browser=False)
-    # start(IceCreamGame, address='0.0.0.0', port=80, start_browser=True)
+    # start(IceCreamGame, port=80, start_browser=False)
+    start(IceCreamGame, address='0.0.0.0', port=8080, start_browser=True)
