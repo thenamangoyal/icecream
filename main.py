@@ -144,18 +144,6 @@ class IceCreamGame(App):
         mainContainer = gui.Container(style={'width': '100%', 'display': 'block', 'overflow': 'auto', 'text-align': 'center'})
         mainContainer.style['justify-content'] = 'center'
         mainContainer.style['align-items'] = 'center'
-        # top_hbox = gui.HBox(width="60%", style={'text-align': 'center', 'margin': 'auto'})
-
-        # label_i = gui.Label("i:")
-        # self.spin_i = gui.SpinBox(0, 0, self.l-2)
-        # label_j = gui.Label("j:")
-        # self.spin_j = gui.SpinBox(0, 0, self.w-2)
-        
-
-        # bt = gui.Button("Scoop")
-        # bt.onclick.do(self.scoop_button_press)
-        # top_hbox.append([label_i, self.spin_i, label_j, self.spin_j, bt])
-        # mainContainer.append(top_hbox)
 
         bt_hbox = gui.HBox(width="30%", style={'text-align': 'center', 'margin': 'auto'})
         play_bt = gui.Button("Play")
@@ -226,13 +214,6 @@ class IceCreamGame(App):
     
     def play_all_bt_press(self, widget):
         self.__play_all()
-
-    # def scoop_button_press(self, widget):
-    #     i = int(self.spin_i.get_value())
-    #     j = int(self.spin_j.get_value())
-    #     self.__scoop(i, j)
-
-    #     self.update_table()
 
 
 class IceCreamContainer:
