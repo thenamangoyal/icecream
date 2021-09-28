@@ -18,6 +18,7 @@ class IceCreamGame(App):
         self.flavors = self.ice_cream_container.get_flavors()
         
         self.players = []
+        self.player_names = []
         self.served = []
         self.turns_received = np.zeros(0, dtype=np.int)
         self.players_score = []
@@ -26,10 +27,10 @@ class IceCreamGame(App):
         self.max_allowed_per_turn = 24
         self.total_turn_per_player = -1
 
-        self.__add_player(Player(np.copy(self.flavors)))
-        self.__add_player(Player(np.copy(self.flavors)))
-        self.__add_player(Player(np.copy(self.flavors)))
-        self.__add_player(Player(np.copy(self.flavors)))
+        self.__add_player(Player(np.random.permutation(self.flavors).tolist()), "Group 1")
+        self.__add_player(Player(np.random.permutation(self.flavors).tolist()), "Group 2")
+        self.__add_player(Player(np.random.permutation(self.flavors).tolist()), "Group 3")
+        self.__add_player(Player(np.random.permutation(self.flavors).tolist()), "Group 4")
 
         self.next_player = self.__assign_next_player()
         
@@ -45,12 +46,16 @@ class IceCreamGame(App):
         # self.label.set_text("Scooped {}".format(scooped_items))
         return scooped_items
     
-    def __add_player(self, p):
-        self.players.append(p)
-        self.served.append({k:0 for k in self.flavors})
-        self.turns_received = np.zeros(len(self.players), dtype=np.int)
-        self.players_score.append(0)
-        self.total_turn_per_player = math.floor(120/ len(self.players))
+    def __add_player(self, p, name):
+        if name not in self.player_names:
+            self.players.append(p)
+            self.player_names.append(name)
+            self.served.append({k:0 for k in self.flavors})
+            self.turns_received = np.zeros(len(self.players), dtype=np.int)
+            self.players_score.append(0)
+            self.total_turn_per_player = math.floor(120/ len(self.players))
+        else:
+            print("Failed to insert player as another player with name {} exists.".format(name))
     
     def __assign_next_player(self):
         # find first min turns recevied player
@@ -93,7 +98,6 @@ class IceCreamGame(App):
         player = self.players[player_idx]
         served_this_turn = []
         next_player = None
-        last_action = None
         
         while len(served_this_turn) < self.max_allowed_per_turn:
             top_layer = self.ice_cream_container.get_top_layer()
@@ -109,7 +113,7 @@ class IceCreamGame(App):
                     scooped_items = self.__scoop(i,j)
                     for flavor in scooped_items:
                         self.served[player_idx][flavor] += 1
-                        self.players_score[player_idx] += len(self.flavors) - player.get_flavor_preference(flavor)
+                        self.players_score[player_idx] += len(self.flavors) - player.get_flavor_preference(flavor) + 1
 
                     served_this_turn.extend(scooped_items)
                 else:
@@ -133,6 +137,9 @@ class IceCreamGame(App):
     
     def get_player_count(self):
         return len(self.players)
+    
+    def get_player_names(self):
+        return copy.deepcopy(self.player_names)
     
     def get_served(self):
         return copy.deepcopy(self.served)
@@ -158,6 +165,9 @@ class IceCreamGame(App):
 
         self.score_table = gui.TableWidget(2, len(self.players), style={'margin':'5px auto'})
         self.update_score_table()
+        for player_idx, _ in enumerate(self.players_score):
+            self.score_table.item_at(0, player_idx).set_style("padding:0 10px")
+            self.score_table.item_at(1, player_idx).set_style("padding:0 10px")
         mainContainer.append(self.score_table)
 
         paths = ["gray.png", "yellow.png", "green.png", "red.png", "blue.png", "cream.png", "pink.png", "orange.png", "brown.png", "cyan.png", "almond.png", "strawberry.png"]
@@ -184,7 +194,7 @@ class IceCreamGame(App):
     
     def update_score_table(self):
         for player_idx, score in enumerate(self.players_score):
-            self.score_table.item_at(0, player_idx).set_text("Player {}".format(player_idx))
+            self.score_table.item_at(0, player_idx).set_text("{}".format(self.player_names[player_idx]))
             self.score_table.item_at(1, player_idx).set_text("{}, {}".format(score, self.turns_received[player_idx]))
 
     def update_table(self):
@@ -283,11 +293,16 @@ class IceCreamContainer:
 
 
 class Player:
-    def __init__(self, flavors) -> None:
-        self.flavor_preference = np.random.permutation(flavors).tolist()
+    def __init__(self, flavor_preference) -> None:
+        self.flavor_preference = flavor_preference
+        self.state = None
+        self.initialize()
+
+    def initialize(self):
+        pass
 
     def get_flavor_preference(self, flavor):
-        return self.flavor_preference.index(flavor)
+        return self.flavor_preference.index(flavor) + 1
     
     def serve(self, top_layer, curr_level, player_idx, get_flavors, get_player_count, get_served, get_turns_received):
         x = np.random.randint(0,4)
@@ -308,4 +323,4 @@ class Player:
 if __name__ == '__main__':
     
     # start(IceCreamGame, port=80, start_browser=False)
-    start(IceCreamGame, address='0.0.0.0', port=8080, start_browser=True)
+    start(IceCreamGame, address='0.0.0.0', port=8080, start_browser=False)
