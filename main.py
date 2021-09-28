@@ -58,9 +58,11 @@ class IceCreamGame(App):
             print("Failed to insert player as another player with name {} exists.".format(name))
     
     def __assign_next_player(self):
-        # find first min turns recevied player
-       return np.argmin(self.turns_received)
-
+        # randomly select among valid players
+        least_helpings = np.amin(self.turns_received)
+        valid_players = np.argwhere(self.turns_received==least_helpings)
+        return valid_players[np.random.randint(0, valid_players.size)][0]
+    
     def __game_end(self):
         print("Game finished")
         self.label.set_text("Game ended, as each player played: {} turns".format(self.total_turn_per_player))
@@ -76,7 +78,7 @@ class IceCreamGame(App):
     def __play(self, do_update=True):
         if np.amin(self.turns_received) < self.total_turn_per_player:
             if np.amin(self.turns_received) < self.turns_received[self.next_player]:
-                print("Can't pass to the player {}, as there are other players who have received less number of helps".format(self.next_player))
+                print("Can't pass to the player {}, as other player(s) with less helpings exists".format(self.next_player))
                 self.next_player = self.__assign_next_player()
 
             print("Passed to player {}".format(self.next_player))
