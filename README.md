@@ -1,4 +1,6 @@
-# icecream
+# Project 2: Icecream
+
+http://www.cs.columbia.edu/~kar/4444f21/node19.html
 
 ## Installation
 
@@ -11,3 +13,8 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+
+## Reference
+
+1. https://remi.readthedocs.io/en/latest/remi.html
+1. https://github.com/dddomodossola/remi
