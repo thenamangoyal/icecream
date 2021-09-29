@@ -386,7 +386,6 @@ class Player:
     def serve(self, top_layer, curr_level, player_idx, get_flavors, get_player_count, get_served, get_turns_received):
         x = np.random.randint(0,4)
         if x < 3:
-            # print(top_layer.shape)
             i = np.random.randint(0, top_layer.shape[0]-1)
             j = np.random.randint(0, top_layer.shape[1]-1)
             action = "scoop"
