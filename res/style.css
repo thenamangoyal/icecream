@@ -1,0 +1,52 @@
+.hoverable:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-box-shadow:inset 0px 0px 0px 4px rgba(0,0,0,0.25);
+    -moz-box-shadow:inset 0px 0px 0px 4px rgba(0,0,0,0.25);
+    box-shadow:inset 0px 0px 0px 4px rgba(0,0,0,0.25)
+}
+
+.hoverable {
+    margin: 0 auto;
+    line-height: 46px;
+    height:100%;
+    width: 100%;
+    color: #ffffff;
+    opacity: 0;
+}
+
+button {
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    display: inline;
+    font-weight: 500;
+    letter-spacing: 0;
+    padding:10px;
+    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    will-change: box-shadow;
+    outline: none;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    vertical-align: middle;
+    background: rgb(80, 80, 80);
+    color: rgb(255, 255, 255);
+    box-shadow: 3px 3px 5px rgb(150,150,150);
+}
+button:hover {
+    background: rgb(20,20,20);
+}
+button:disabled {
+    background-color: #ddd;
+    background: #ddd;
+    border: 1px solid #ddd;
+    box-shadow: none;
+    cursor: default;
+    color: #9F9F9F;
+}
+button:active{
+    box-shadow: 0 4px 5px 0 rgba(0, 0, 0, .2), 0 1px 1px 0 rgba(0, 0, 0, .12), 0 2px 0px -1px rgba(0, 0, 0, .2);
+}

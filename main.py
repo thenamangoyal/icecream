@@ -9,6 +9,7 @@ import json
 
 class IceCreamGame(App):
     def __init__(self, *args):
+
         res_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'res')
         self.ice_cream_container = IceCreamContainer()
         self.l = self.ice_cream_container.get_length()
@@ -204,13 +205,15 @@ class IceCreamGame(App):
         curr_level = self.ice_cream_container.get_curr_level()
         for j in range(self.w):
             for i in range(self.l):
-                main_div = gui.Widget(style="background-image: url(/res:{})".format(self.flavor_to_path[top_layer[i,j]]))
+                main_div = gui.Widget()
+                main_div.set_style({"background": "url(/res:{})".format(self.flavor_to_path[top_layer[i,j]])})
                 main_div.set_size("46px", "46px")
-                border = "{}px black".format(self.h - curr_level[i,j] -1)
+                border = "4px rgba(0,0,0,0.1)"
+                label = gui.Label()
+                label.attributes["class"] = "hoverable"
+                label.set_text("{}".format(curr_level[i,j]+1))
+                main_div.add_child("label", label)
                 main_div.set_style("-webkit-box-shadow:inset 0px 0px 0px {}; -moz-box-shadow:inset 0px 0px 0px {}; box-shadow:inset 0px 0px 0px {}".format(border, border, border))
-                # main_div.set_style("text-align: right")
-                # label = gui.Label("{}".format(curr_level+1))
-                # main_div.add_child(0, label)
                 self.set_cell(i, j, main_div)
     
     def set_cell(self, i, j, widget):
@@ -324,5 +327,5 @@ class Player:
 
 if __name__ == '__main__':
     
-    # start(IceCreamGame, port=80, start_browser=False)
-    start(IceCreamGame, address='0.0.0.0', port=8080, start_browser=False)
+    start(IceCreamGame, port=8080, start_browser=False)
+    # start(IceCreamGame, address='0.0.0.0', port=8080, start_browser=False)
