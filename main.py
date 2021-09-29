@@ -339,6 +339,16 @@ class IceCreamContainer:
         for j in range(self.w):
             for i in range(self.l):
                 self.curr_level[i,j] = self.h-1
+    
+    def generate_type(self):
+        empty_container = np.empty((self.l, self.w, self.h), dtype=np.int)
+
+        assert empty_container.size % len(self.flavors) == 0, "Number of flavors can't divide container size"
+        flavor_repeated = np.repeat(np.array(self.flavors, dtype=np.int), empty_container.size/ len(self.flavors))
+
+        flavor_assigned = self.rng.permutation(flavor_repeated)
+
+        return np.reshape(flavor_assigned, empty_container.shape)
 
     def get_flavors(self):
         return self.flavors
