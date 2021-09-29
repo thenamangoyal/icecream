@@ -34,6 +34,8 @@ class IceCreamGame(App):
         self.__add_player(Player(np.random.permutation(self.flavors).tolist()), "Group 4")
 
         self.next_player = self.__assign_next_player()
+        self.processing_turn = False
+        self.served_this_turn = None
         
         super(IceCreamGame, self).__init__(*args, static_file_path={'res':res_path})
     
@@ -68,72 +70,135 @@ class IceCreamGame(App):
         print("Game finished")
         self.label.set_text("Game ended, as each player played: {} turns".format(self.total_turn_per_player))
 
+
+    def __turn_end(self, new_next_player=None):
+        self.processing_turn = False
+        self.served_this_turn = None
+
+        if new_next_player is not None:
+            if new_next_player < 0 or new_next_player >= len(self.players):
+                print("Can't pass to player idx {}, as out of bounds".format(new_next_player))
+                self.next_player = self.__assign_next_player()
+                print("Assigned new player {}".format(self.player_names[self.next_player]))
+            elif np.amin(self.turns_received) < self.turns_received[new_next_player]:
+                print("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[new_next_player]))
+                self.next_player = self.__assign_next_player()
+                print("Assigned new player {}".format(self.player_names[self.next_player]))
+            else:
+                self.next_player = new_next_player
+        else:
+            print("No next player specified")
+            self.next_player = self.__assign_next_player()
+            print("Assigned new player {}".format(self.player_names[self.next_player]))
+        print("Next turn {}".format(self.player_names[self.next_player]))
+        self.label.set_text("Next turn {}".format(self.player_names[self.next_player]))
+
+
     def __play_all(self):
         self.label.set_text("Playing all turns")
         while np.amin(self.turns_received) < self.total_turn_per_player:
-            self.__play(do_update=False)
+            self.__play(run_stepwise=False, do_update=False)
         self.update_score_table()
         self.update_table()
         self.__game_end()
-    
-    def __play(self, do_update=True):
-        if np.amin(self.turns_received) < self.total_turn_per_player:
-            if np.amin(self.turns_received) < self.turns_received[self.next_player]:
-                print("Can't pass to the player {}, as other player(s) with less helpings exists".format(self.next_player))
-                self.next_player = self.__assign_next_player()
 
-            print("Passed to player {}".format(self.next_player))
-            self.label.set_text("Current turn Player {}".format(self.next_player))
-            new_next_player = self.__turn_p(self.next_player, do_update)
-            if new_next_player is not None:
-                self.next_player = new_next_player
+
+    def __play(self, run_stepwise=False, do_update=True):
+        if not self.processing_turn:
+            if np.amin(self.turns_received) < self.total_turn_per_player:
+                if np.amin(self.turns_received) < self.turns_received[self.next_player]:
+                    print("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[self.next_player]))
+                    self.next_player = self.__assign_next_player()
+                    print("Assigned new player {}".format(self.player_names[self.next_player]))
+
+                print("Current turn {}".format(self.player_names[self.next_player]))
+                self.label.set_text("Current turn {}".format(self.player_names[self.next_player]))
+
+                self.processing_turn = True
+                self.served_this_turn = []
+                self.turns_received[self.next_player] += 1
+            
             else:
-                self.next_player = self.__assign_next_player()
-            self.label.set_text("Next turn Player {}".format(self.next_player))
+                self.__game_end()
+                return
+
+        if run_stepwise:
+            pass_next, new_next_player = self.__step_p(self.next_player, do_update)
+            if pass_next:
+                self.__turn_end(new_next_player)
+
         else:
-            self.__game_end()
+            while len(self.served_this_turn) < self.max_allowed_per_turn:
+                pass_next, new_next_player = self.__step_p(self.next_player, do_update=False)
+                if pass_next:
+                    break
+            if do_update:
+                self.update_score_table()
+                self.update_table()
+            self.__turn_end(new_next_player)
 
+    def __check_action(self, action_values_dict):
+        is_valid = False
+        if isinstance(action_values_dict, dict):
+            if set(action_values_dict.keys()) == set(["action", "values"]):
+                if action_values_dict["action"] in ["scoop", "pass"]:
+                    if action_values_dict["action"] == "scoop":
+                        if len(action_values_dict["values"]) == 2:
+                            if np.issubdtype(type(action_values_dict["values"][0]), np.int) and np.issubdtype(type(action_values_dict["values"][1]), np.int):
+                                is_valid = True
+                    elif action_values_dict["action"] == "pass":
+                        if np.issubdtype(type(action_values_dict["values"]), np.int):
+                            is_valid = True
+        return is_valid
 
-    def __turn_p(self, player_idx, do_update=True):
-        assert player_idx < len(self.players) and player_idx >= 0, "Player idx out of bounds"
-        self.turns_received[player_idx] += 1
-
-        player = self.players[player_idx]
-        served_this_turn = []
+    def __step_p(self, player_idx, do_update=True):
+        pass_next = False
         next_player = None
-        
-        while len(served_this_turn) < self.max_allowed_per_turn:
+        if len(self.served_this_turn) < self.max_allowed_per_turn:
+            player = self.players[player_idx]
             top_layer = self.ice_cream_container.get_top_layer()
             curr_level = self.ice_cream_container.get_curr_level()
             action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
-            action = action_values_dict["action"]
-            values = action_values_dict["values"]
-            print("Received action: {} from player {}".format(action_values_dict, player_idx))
-            
-            if action == "scoop":
-                i, j = values
-                if len(self.ice_cream_container.scoop(i,j, dry_run=True)) + len(served_this_turn) <= self.max_allowed_per_turn:
-                    scooped_items = self.__scoop(i,j)
-                    for flavor in scooped_items:
-                        self.served[player_idx][flavor] += 1
-                        self.players_score[player_idx] += len(self.flavors) - player.get_flavor_preference(flavor) + 1
+            is_valid_action = self.__check_action(action_values_dict)
+            if is_valid_action:
+                action = action_values_dict["action"]
+                values = action_values_dict["values"]
+                print("Received action: {} from {}".format(action_values_dict, self.player_names[player_idx]))
+                self.label.set_text("{}, {}".format(self.label.get_text(), action_values_dict))
+                
+                if action == "scoop":
+                    i, j = values
+                    if not(i >= 0 and i < self.l-1 and  j >= 0 and j < self.w-1):
+                        print("Given out of bounds scoop position {}".format((i,j)))
+                        pass_next = True
+                    elif len(self.ice_cream_container.scoop(i,j, dry_run=True)) + len(self.served_this_turn) <= self.max_allowed_per_turn:
+                        scooped_items = self.__scoop(i,j)
+                        for flavor in scooped_items:
+                            self.served[player_idx][flavor] += 1
+                            self.players_score[player_idx] += len(self.flavors) - player.get_flavor_preference(flavor) + 1
 
-                    served_this_turn.extend(scooped_items)
-                else:
-                    break
-            elif action == "pass":
-                if values < 0 or values >= len(self.players):
-                    print("Next player {} is out of bounds".format(values))
-                elif values == player_idx:
-                    print("Can't ask to pass to yourself")
-                else:
-                    next_player = values
-                break
-        if do_update:
-            self.update_score_table()
-            self.update_table()
-        
-        return next_player
+                        self.served_this_turn.extend(scooped_items)
+                    else:
+                        pass_next = True
+                elif action == "pass":
+                    if values < 0 or values >= len(self.players):
+                        print("Next player idx {} is out of bounds".format(values))
+                    elif values == player_idx:
+                        print("Can't ask to pass to yourself")
+                    else:
+                        next_player = values
+                    pass_next = True
+            else:
+                print("Given invalid action_value_dict.")
+                pass_next = True
+            
+            if do_update:
+                self.update_score_table()
+                self.update_table()
+        else:
+            pass_next = True
+        return pass_next, next_player
+            
 
     def get_flavors(self):
         return self.flavors
@@ -156,11 +221,13 @@ class IceCreamGame(App):
         mainContainer.style['align-items'] = 'center'
 
         bt_hbox = gui.HBox(width="30%", style={'text-align': 'center', 'margin': 'auto'})
-        play_bt = gui.Button("Play")
+        play_step_bt = gui.Button("Play Step")
+        play_turn_bt = gui.Button("Play Turn")
         play_all_bt = gui.Button("Play All")
-        bt_hbox.append([play_bt, play_all_bt])
+        bt_hbox.append([play_step_bt, play_turn_bt, play_all_bt])
 
-        play_bt.onclick.do(self.play_bt_press)
+        play_step_bt.onclick.do(self.play_step_bt_press)
+        play_turn_bt.onclick.do(self.play_turn_bt_press)
         play_all_bt.onclick.do(self.play_all_bt_press)
         mainContainer.append(bt_hbox)
         self.label = gui.Label("Ice Cream: Ready to start")
@@ -226,8 +293,11 @@ class IceCreamGame(App):
             for ci in range(0, self.table.column_count):
                 self.table.item_at(ri, ci).set_text("{}".format(values[ri, ci]))
 
-    def play_bt_press(self, widget):
-        self.__play()
+    def play_step_bt_press(self, widget):
+        self.__play(run_stepwise=True)
+
+    def play_turn_bt_press(self, widget):
+        self.__play(run_stepwise=False)
     
     def play_all_bt_press(self, widget):
         self.__play_all()
@@ -282,17 +352,16 @@ class IceCreamContainer:
         return np.copy(self.curr_level)
 
     def scoop(self, i, j, dry_run=False):
-        assert i >= 0 and i < self.l-1, "i value {} for scooping out of bounds".format(i)
-        assert j >= 0 and j < self.w-1, "j value {} for scooping out of bounds".format(j)
-        
         scooped_items = []
-        for iter_j in range(j, j+2):
-            for iter_i in range(i, i+2):
-                iter_k = self.curr_level[iter_i,iter_j]
-                if iter_k >= 0:
-                    scooped_items.append(self.container[iter_i, iter_j, iter_k])
-                    if not dry_run:
-                        self.curr_level[iter_i,iter_j] += -1
+
+        if i >= 0 and i < self.l-1 and  j >= 0 and j < self.w-1:
+            for iter_j in range(j, j+2):
+                for iter_i in range(i, i+2):
+                    iter_k = self.curr_level[iter_i,iter_j]
+                    if iter_k >= 0:
+                        scooped_items.append(self.container[iter_i, iter_j, iter_k])
+                        if not dry_run:
+                            self.curr_level[iter_i,iter_j] += -1
         
         return scooped_items
 
