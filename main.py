@@ -11,6 +11,9 @@ class IceCreamGame(App):
     def __init__(self, *args):
 
         res_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'res')
+        super(IceCreamGame, self).__init__(*args, static_file_path={'res':res_path})
+
+    def initialize(self):
         self.ice_cream_container = IceCreamContainer()
         self.l = self.ice_cream_container.get_length()
         self.w = self.ice_cream_container.get_width()
@@ -36,8 +39,7 @@ class IceCreamGame(App):
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
         self.served_this_turn = None
-        
-        super(IceCreamGame, self).__init__(*args, static_file_path={'res':res_path})
+
     
     # def idle(self):
     #     self.update_table()
@@ -221,6 +223,7 @@ class IceCreamGame(App):
         return np.copy(self.turns_received)
 
     def main(self):
+        self.initialize()
         mainContainer = gui.Container(style={'width': '100%', 'display': 'block', 'overflow': 'auto', 'text-align': 'center'})
         mainContainer.style['justify-content'] = 'center'
         mainContainer.style['align-items'] = 'center'
