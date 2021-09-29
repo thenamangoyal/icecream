@@ -208,12 +208,14 @@ class IceCreamGame(App):
                 main_div = gui.Widget()
                 main_div.set_style({"background": "url(/res:{})".format(self.flavor_to_path[top_layer[i,j]])})
                 main_div.set_size("46px", "46px")
-                border = "4px rgba(0,0,0,0.1)"
+                border = "4px rgba(0,0,0,{})".format((self.h - curr_level[i,j]-1)/ (self.h))
+                main_div.set_style("-webkit-box-shadow:inset 0px 0px 0px {}; -moz-box-shadow:inset 0px 0px 0px {}; box-shadow:inset 0px 0px 0px {}".format(border, border, border))
+                
                 label = gui.Label()
                 label.attributes["class"] = "hoverable"
                 label.set_text("{}".format(curr_level[i,j]+1))
                 main_div.add_child("label", label)
-                main_div.set_style("-webkit-box-shadow:inset 0px 0px 0px {}; -moz-box-shadow:inset 0px 0px 0px {}; box-shadow:inset 0px 0px 0px {}".format(border, border, border))
+                
                 self.set_cell(i, j, main_div)
     
     def set_cell(self, i, j, widget):
