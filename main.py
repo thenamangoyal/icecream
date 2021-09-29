@@ -76,6 +76,15 @@ class IceCreamGame(App):
     def __game_end(self):
         self.logger.debug("Game finished")
         self.label.set_text("Game ended, as each player played: {} turns".format(self.total_turn_per_player))
+        for player_idx, score in enumerate(self.players_score):
+            self.logger.debug("{} turns: {}".format(self.player_names[player_idx], self.turns_received[player_idx]))
+        for player_idx, score in enumerate(self.players_score):
+            self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
+        group_score = np.mean(self.players_score)
+        self.logger.debug("Average group score: {}".format(group_score))
+        for player_idx, score in enumerate(self.players_score):
+            self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, group_score])))
+
 
 
     def __turn_end(self, new_next_player=None):
@@ -246,7 +255,7 @@ class IceCreamGame(App):
         self.label = gui.Label("Ice Cream: Ready to start")
         mainContainer.append(self.label)
 
-        self.score_table = gui.TableWidget(2, len(self.players), style={'margin':'5px auto'})
+        self.score_table = gui.TableWidget(2, len(self.players)+1, style={'margin':'5px auto'})
         self.update_score_table()
         for player_idx, _ in enumerate(self.players_score):
             self.score_table.item_at(0, player_idx).set_style("padding:0 10px")
@@ -279,6 +288,8 @@ class IceCreamGame(App):
         for player_idx, score in enumerate(self.players_score):
             self.score_table.item_at(0, player_idx).set_text("{}".format(self.player_names[player_idx]))
             self.score_table.item_at(1, player_idx).set_text("{}, {}".format(score, self.turns_received[player_idx]))
+        self.score_table.item_at(0, len(self.players)).set_text("{}".format("Average"))
+        self.score_table.item_at(1, len(self.players)).set_text("{}".format(np.mean(self.players_score)))
 
     def update_table(self):
         top_layer = self.ice_cream_container.get_top_layer()
