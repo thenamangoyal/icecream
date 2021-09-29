@@ -78,20 +78,25 @@ class IceCreamGame(App):
         if new_next_player is not None:
             if new_next_player < 0 or new_next_player >= len(self.players):
                 print("Can't pass to player idx {}, as out of bounds".format(new_next_player))
+                self.label.set_text("Can't pass to player idx {}, as out of bounds".format(new_next_player))
                 self.next_player = self.__assign_next_player()
                 print("Assigned new player {}".format(self.player_names[self.next_player]))
             elif np.amin(self.turns_received) < self.turns_received[new_next_player]:
                 print("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[new_next_player]))
+                self.label.set_text("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[new_next_player]))
                 self.next_player = self.__assign_next_player()
                 print("Assigned new player {}".format(self.player_names[self.next_player]))
             else:
+                print("Passed to {} by {}".format(self.player_names[new_next_player], self.player_names[self.next_player]))
+                self.label.set_text("Passed to {} by {}".format(self.player_names[new_next_player], self.player_names[self.next_player]))
                 self.next_player = new_next_player
         else:
-            print("No next player specified")
+            print("No next player specified by {}".format(self.player_names[self.next_player]))
+            self.label.set_text("No next player specified by {}".format(self.player_names[self.next_player]))
             self.next_player = self.__assign_next_player()
             print("Assigned new player {}".format(self.player_names[self.next_player]))
         print("Next turn {}".format(self.player_names[self.next_player]))
-        self.label.set_text("Next turn {}".format(self.player_names[self.next_player]))
+        self.label.set_text("{}, Next turn {}".format(self.label.get_text(), self.player_names[self.next_player]))
 
 
     def __play_all(self):
