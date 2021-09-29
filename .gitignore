@@ -137,3 +137,6 @@ dmypy.json
 
 # Metadata
 .metadata/
+
+# Debug log
+debug.log

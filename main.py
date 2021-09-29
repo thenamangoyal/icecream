@@ -6,6 +6,7 @@ import remi.gui as gui
 from remi import start, App
 import copy
 import json
+import logging
 
 class IceCreamGame(App):
     def __init__(self, *args):
@@ -14,7 +15,15 @@ class IceCreamGame(App):
         super(IceCreamGame, self).__init__(*args, static_file_path={'res':res_path})
 
     def initialize(self):
-        self.ice_cream_container = IceCreamContainer()
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        # create file handler which logs even debug messages
+        fh = logging.FileHandler('debug.log', mode="w")
+        fh.setLevel(logging.DEBUG)
+        self.logger.addHandler(fh)
+        fh.setFormatter(logging.Formatter('%(message)s'))
+
+        self.ice_cream_container = IceCreamContainer(self.logger)
         self.l = self.ice_cream_container.get_length()
         self.w = self.ice_cream_container.get_width()
         self.h = self.ice_cream_container.get_height()
@@ -44,7 +53,7 @@ class IceCreamGame(App):
     # def idle(self):
     #     self.update_table()
     #     self.update_score_table()
-    
+
     
     def __add_player(self, p, name):
         if name not in self.player_names:
@@ -55,7 +64,7 @@ class IceCreamGame(App):
             self.players_score.append(0)
             self.total_turn_per_player = math.floor(120/ len(self.players))
         else:
-            print("Failed to insert player as another player with name {} exists.".format(name))
+            self.logger.debug("Failed to insert player as another player with name {} exists.".format(name))
     
     def __assign_next_player(self):
         # randomly select among valid players
@@ -64,7 +73,7 @@ class IceCreamGame(App):
         return valid_players[np.random.randint(0, valid_players.size)][0]
     
     def __game_end(self):
-        print("Game finished")
+        self.logger.debug("Game finished")
         self.label.set_text("Game ended, as each player played: {} turns".format(self.total_turn_per_player))
 
 
@@ -74,25 +83,25 @@ class IceCreamGame(App):
 
         if new_next_player is not None:
             if new_next_player < 0 or new_next_player >= len(self.players):
-                print("Can't pass to player idx {}, as out of bounds".format(new_next_player))
+                self.logger.debug("Can't pass to player idx {}, as out of bounds".format(new_next_player))
                 self.label.set_text("Can't pass to player idx {}, as out of bounds".format(new_next_player))
                 self.next_player = self.__assign_next_player()
-                print("Assigned new player {}".format(self.player_names[self.next_player]))
+                self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
             elif np.amin(self.turns_received) < self.turns_received[new_next_player]:
-                print("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[new_next_player]))
+                self.logger.debug("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[new_next_player]))
                 self.label.set_text("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[new_next_player]))
                 self.next_player = self.__assign_next_player()
-                print("Assigned new player {}".format(self.player_names[self.next_player]))
+                self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
             else:
-                print("Passed to {} by {}".format(self.player_names[new_next_player], self.player_names[self.next_player]))
+                self.logger.debug("Passed to {} by {}".format(self.player_names[new_next_player], self.player_names[self.next_player]))
                 self.label.set_text("Passed to {} by {}".format(self.player_names[new_next_player], self.player_names[self.next_player]))
                 self.next_player = new_next_player
         else:
-            print("No next player specified by {}".format(self.player_names[self.next_player]))
+            self.logger.debug("No next player specified by {}".format(self.player_names[self.next_player]))
             self.label.set_text("No next player specified by {}".format(self.player_names[self.next_player]))
             self.next_player = self.__assign_next_player()
-            print("Assigned new player {}".format(self.player_names[self.next_player]))
-        print("Next turn {}".format(self.player_names[self.next_player]))
+            self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
+        self.logger.debug("Next turn {}".format(self.player_names[self.next_player]))
         self.label.set_text("{}, Next turn {}".format(self.label.get_text(), self.player_names[self.next_player]))
 
 
@@ -109,11 +118,11 @@ class IceCreamGame(App):
         if not self.processing_turn:
             if np.amin(self.turns_received) < self.total_turn_per_player:
                 if np.amin(self.turns_received) < self.turns_received[self.next_player]:
-                    print("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[self.next_player]))
+                    self.logger.debug("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[self.next_player]))
                     self.next_player = self.__assign_next_player()
-                    print("Assigned new player {}".format(self.player_names[self.next_player]))
+                    self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
 
-                print("Current turn {}".format(self.player_names[self.next_player]))
+                self.logger.debug("Current turn {}".format(self.player_names[self.next_player]))
                 self.label.set_text("Current turn {}".format(self.player_names[self.next_player]))
 
                 self.processing_turn = True
@@ -165,13 +174,13 @@ class IceCreamGame(App):
             if is_valid_action:
                 action = action_values_dict["action"]
                 values = action_values_dict["values"]
-                print("Received action: {} from {}".format(action_values_dict, self.player_names[player_idx]))
+                self.logger.debug("Received action: {} from {}".format(action_values_dict, self.player_names[player_idx]))
                 self.label.set_text("{}, {}".format(self.label.get_text(), action_values_dict))
                 
                 if action == "scoop":
                     i, j = values
                     if not(i >= 0 and i < self.l-1 and  j >= 0 and j < self.w-1):
-                        print("Given out of bounds scoop position {}".format((i,j)))
+                        self.logger.debug("Given out of bounds scoop position {}".format((i,j)))
                         pass_next = True
                     elif len(self.ice_cream_container.scoop(i,j, dry_run=True)) + len(self.served_this_turn) <= self.max_allowed_per_turn:
                         scooped_items = self.ice_cream_container.scoop(i,j, dry_run=False)
@@ -184,14 +193,14 @@ class IceCreamGame(App):
                         pass_next = True
                 elif action == "pass":
                     if values < 0 or values >= len(self.players):
-                        print("Next player idx {} is out of bounds".format(values))
+                        self.logger.debug("Next player idx {} is out of bounds".format(values))
                     elif values == player_idx:
-                        print("Can't ask to pass to yourself")
+                        self.logger.debug("Can't ask to pass to yourself")
                     else:
                         next_player = values
                     pass_next = True
             else:
-                print("Given invalid action_value_dict.")
+                self.logger.debug("Given invalid action_value_dict.")
                 pass_next = True
             
             if do_update:
@@ -307,7 +316,8 @@ class IceCreamGame(App):
 
 
 class IceCreamContainer:
-    def __init__(self) -> None:
+    def __init__(self, logger) -> None:
+        self.logger = logger
         self.flavors = list(range(1,13))
         self.l = 24 # cols
         self.w = 15 # rows
@@ -318,7 +328,7 @@ class IceCreamContainer:
         self.possible_types = np.array([2,3,4,5,6,8,9,10,12], dtype=np.int)
         self.ice_cream_type = self.possible_types[np.random.randint(0, self.possible_types.size)]
 
-        print("Using ice cream type {}".format(self.ice_cream_type))
+        self.logger.debug("Using ice cream type {}".format(self.ice_cream_type))
         with open(os.path.join("types", "{}.json".format(self.ice_cream_type)), "r") as jf:
             flavor_assigned = np.array(json.load(jf), dtype=np.int)
         
