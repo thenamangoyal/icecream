@@ -23,7 +23,8 @@ class IceCreamGame(App):
         self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
 
-        self.ice_cream_container = IceCreamContainer(self.logger)
+        self.rng = np.random.default_rng(2021)
+        self.ice_cream_container = IceCreamContainer(self.rng, self.logger)
         self.l = self.ice_cream_container.get_length()
         self.w = self.ice_cream_container.get_width()
         self.h = self.ice_cream_container.get_height()
@@ -40,10 +41,10 @@ class IceCreamGame(App):
         self.max_allowed_per_turn = 24
         self.total_turn_per_player = -1
 
-        self.__add_player(Player(np.random.permutation(self.flavors).tolist()), "Group 1")
-        self.__add_player(Player(np.random.permutation(self.flavors).tolist()), "Group 2")
-        self.__add_player(Player(np.random.permutation(self.flavors).tolist()), "Group 3")
-        self.__add_player(Player(np.random.permutation(self.flavors).tolist()), "Group 4")
+        self.__add_player(Player(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 1")
+        self.__add_player(Player(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 2")
+        self.__add_player(Player(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 3")
+        self.__add_player(Player(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 4")
 
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
@@ -70,7 +71,7 @@ class IceCreamGame(App):
         # randomly select among valid players
         least_helpings = np.amin(self.turns_received)
         valid_players = np.argwhere(self.turns_received==least_helpings)
-        return valid_players[np.random.randint(0, valid_players.size)][0]
+        return valid_players[self.rng.integers(0, valid_players.size)][0]
     
     def __game_end(self):
         self.logger.debug("Game finished")
@@ -316,7 +317,8 @@ class IceCreamGame(App):
 
 
 class IceCreamContainer:
-    def __init__(self, logger) -> None:
+    def __init__(self, rng, logger) -> None:
+        self.rng = rng
         self.logger = logger
         self.flavors = list(range(1,13))
         self.l = 24 # cols
@@ -326,7 +328,7 @@ class IceCreamContainer:
         self.curr_level = np.empty((self.l, self.w), dtype=np.int)
 
         self.possible_types = np.array([2,3,4,5,6,8,9,10,12], dtype=np.int)
-        self.ice_cream_type = self.possible_types[np.random.randint(0, self.possible_types.size)]
+        self.ice_cream_type = self.possible_types[self.rng.integers(0, self.possible_types.size)]
 
         self.logger.debug("Using ice cream type {}".format(self.ice_cream_type))
         with open(os.path.join("types", "{}.json".format(self.ice_cream_type)), "r") as jf:
@@ -382,8 +384,10 @@ class IceCreamContainer:
 
 
 class Player:
-    def __init__(self, flavor_preference) -> None:
+    def __init__(self, flavor_preference, rng, logger) -> None:
         self.flavor_preference = flavor_preference
+        self.rng = rng
+        self.logger = logger
         self.state = None
         self.initialize()
 
@@ -394,16 +398,16 @@ class Player:
         return self.flavor_preference.index(flavor) + 1
     
     def serve(self, top_layer, curr_level, player_idx, get_flavors, get_player_count, get_served, get_turns_received):
-        x = np.random.randint(0,4)
+        x = self.rng.integers(0,4)
         if x < 3:
-            i = np.random.randint(0, top_layer.shape[0]-1)
-            j = np.random.randint(0, top_layer.shape[1]-1)
+            i = self.rng.integers(0, top_layer.shape[0]-1)
+            j = self.rng.integers(0, top_layer.shape[1]-1)
             action = "scoop"
             values = (i,j)
         else:
             other_player_list = list(range(0,get_player_count()))
             other_player_list.remove(player_idx)
-            next_player = other_player_list[np.random.randint(0, len(other_player_list))]
+            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             action = "pass"
             values = next_player
         return {"action": action,  "values" : values}
