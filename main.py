@@ -44,12 +44,7 @@ class IceCreamGame(App):
     # def idle(self):
     #     self.update_table()
     #     self.update_score_table()
-
-    def __scoop(self, i, j):
-        # self.label.set_text("Scooping {}".format((i,j)))
-        scooped_items = self.ice_cream_container.scoop(i,j, dry_run=False)
-        # self.label.set_text("Scooped {}".format(scooped_items))
-        return scooped_items
+    
     
     def __add_player(self, p, name):
         if name not in self.player_names:
@@ -179,7 +174,7 @@ class IceCreamGame(App):
                         print("Given out of bounds scoop position {}".format((i,j)))
                         pass_next = True
                     elif len(self.ice_cream_container.scoop(i,j, dry_run=True)) + len(self.served_this_turn) <= self.max_allowed_per_turn:
-                        scooped_items = self.__scoop(i,j)
+                        scooped_items = self.ice_cream_container.scoop(i,j, dry_run=False)
                         for flavor in scooped_items:
                             self.served[player_idx][flavor] += 1
                             self.players_score[player_idx] += len(self.flavors) - player.get_flavor_preference(flavor) + 1
