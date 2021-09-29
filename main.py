@@ -35,7 +35,7 @@ class IceCreamGame(App):
         self.player_names = []
         self.served = []
         self.turns_received = np.zeros(0, dtype=np.int)
-        self.players_score = []
+        self.player_scores = []
         self.next_player = -1
         
         self.max_allowed_per_turn = 24
@@ -62,7 +62,7 @@ class IceCreamGame(App):
             self.player_names.append(name)
             self.served.append({k:0 for k in self.flavors})
             self.turns_received = np.zeros(len(self.players), dtype=np.int)
-            self.players_score.append(0)
+            self.player_scores.append(0)
             self.total_turn_per_player = math.floor(120/ len(self.players))
         else:
             self.logger.debug("Failed to insert player as another player with name {} exists.".format(name))
@@ -76,13 +76,13 @@ class IceCreamGame(App):
     def __game_end(self):
         self.logger.debug("Game finished")
         self.label.set_text("Game ended, as each player played: {} turns".format(self.total_turn_per_player))
-        for player_idx, score in enumerate(self.players_score):
+        for player_idx, score in enumerate(self.player_scores):
             self.logger.debug("{} turns: {}".format(self.player_names[player_idx], self.turns_received[player_idx]))
-        for player_idx, score in enumerate(self.players_score):
+        for player_idx, score in enumerate(self.player_scores):
             self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
-        group_score = np.mean(self.players_score)
+        group_score = np.mean(self.player_scores)
         self.logger.debug("Average group score: {}".format(group_score))
-        for player_idx, score in enumerate(self.players_score):
+        for player_idx, score in enumerate(self.player_scores):
             self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, group_score])))
 
 
@@ -196,7 +196,7 @@ class IceCreamGame(App):
                         scooped_items = self.ice_cream_container.scoop(i,j, dry_run=False)
                         for flavor in scooped_items:
                             self.served[player_idx][flavor] += 1
-                            self.players_score[player_idx] += len(self.flavors) - player.get_flavor_preference(flavor) + 1
+                            self.player_scores[player_idx] += len(self.flavors) - player.get_flavor_preference(flavor) + 1
 
                         self.served_this_turn.extend(scooped_items)
                     else:
@@ -257,7 +257,7 @@ class IceCreamGame(App):
 
         self.score_table = gui.TableWidget(2, len(self.players)+1, style={'margin':'5px auto'})
         self.update_score_table()
-        for player_idx, _ in enumerate(self.players_score):
+        for player_idx, _ in enumerate(self.player_scores):
             self.score_table.item_at(0, player_idx).set_style("padding:0 10px")
             self.score_table.item_at(1, player_idx).set_style("padding:0 10px")
         mainContainer.append(self.score_table)
@@ -285,11 +285,11 @@ class IceCreamGame(App):
         return mainContainer
     
     def update_score_table(self):
-        for player_idx, score in enumerate(self.players_score):
+        for player_idx, score in enumerate(self.player_scores):
             self.score_table.item_at(0, player_idx).set_text("{}".format(self.player_names[player_idx]))
             self.score_table.item_at(1, player_idx).set_text("{}, {}".format(score, self.turns_received[player_idx]))
         self.score_table.item_at(0, len(self.players)).set_text("{}".format("Average"))
-        self.score_table.item_at(1, len(self.players)).set_text("{}".format(np.mean(self.players_score)))
+        self.score_table.item_at(1, len(self.players)).set_text("{}".format(np.mean(self.player_scores)))
 
     def update_table(self):
         top_layer = self.ice_cream_container.get_top_layer()
