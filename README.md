@@ -1,4 +1,4 @@
-# Project 2: Icecream
+# Project 2: Ice Cream
 
 http://www.cs.columbia.edu/~kar/4444f21/node19.html
 
