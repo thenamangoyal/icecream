@@ -17,8 +17,8 @@ class Player:
         return self.flavor_preference.index(flavor) + 1
     
     def serve(self, top_layer, curr_level, player_idx, get_flavors, get_player_count, get_served, get_turns_received):
-        x = self.rng.integers(0,4)
-        if x < 3:
+        x = self.rng.random()
+        if x < 0.95:
             i = self.rng.integers(0, top_layer.shape[0]-1)
             j = self.rng.integers(0, top_layer.shape[1]-1)
             action = "scoop"
