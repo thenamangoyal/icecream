@@ -397,10 +397,16 @@ class IceCreamContainer:
         scooped_items = []
 
         if i >= 0 and i < self.l-1 and  j >= 0 and j < self.w-1:
+            depths = []
             for iter_j in range(j, j+2):
                 for iter_i in range(i, i+2):
                     iter_k = self.curr_level[iter_i,iter_j]
-                    if iter_k >= 0:
+                    depths.append(iter_k)
+            max_depth = np.amax(np.array(depths, dtype=np.int))
+            for iter_j in range(j, j+2):
+                for iter_i in range(i, i+2):
+                    iter_k = self.curr_level[iter_i,iter_j]
+                    if iter_k >= 0 and max_depth == iter_k:
                         scooped_items.append(self.container[iter_i, iter_j, iter_k])
                         if not dry_run:
                             self.curr_level[iter_i,iter_j] += -1
