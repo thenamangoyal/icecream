@@ -295,7 +295,7 @@ class IceCreamGame(App):
             self.score_table.item_at(0, player_idx).set_text("{}".format(self.player_names[player_idx]))
             self.score_table.item_at(1, player_idx).set_text("{}, {}".format(score, self.turns_received[player_idx]))
         self.score_table.item_at(0, len(self.players)).set_text("{}".format("Average"))
-        self.score_table.item_at(1, len(self.players)).set_text("{}".format(np.mean(self.player_scores)))
+        self.score_table.item_at(1, len(self.players)).set_text("{:.2f}".format(np.mean(self.player_scores)))
 
     def update_table(self):
         top_layer = self.ice_cream_container.get_top_layer()
