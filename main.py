@@ -334,24 +334,20 @@ class IceCreamGame(App):
 
 
 class IceCreamContainer:
-    def __init__(self, rng, logger) -> None:
+    def __init__(self, rng, logger, num_flavors=12) -> None:
         self.rng = rng
         self.logger = logger
-        self.flavors = list(range(1,13))
+        if num_flavors not in [2,3,4,5,6,8,9,10,12]:
+            self.logger.debug("Num flavors {} is not in allowed values, using 12 flavors".format(num_flavors))
+            num_flavors = 12
+        self.flavors = list(range(1,num_flavors+1))
         self.l = 24 # cols
         self.w = 15 # rows
         self.h = 8 # height
         self.container = np.empty((self.l, self.w, self.h), dtype=np.int)
         self.curr_level = np.empty((self.l, self.w), dtype=np.int)
 
-        self.possible_types = np.array([2,3,4,5,6,8,9,10,12], dtype=np.int)
-        self.ice_cream_type = self.possible_types[self.rng.integers(0, self.possible_types.size)]
-
-        self.logger.debug("Using ice cream type {}".format(self.ice_cream_type))
-        with open(os.path.join(root_dir, "types", "{}.json".format(self.ice_cream_type)), "r") as jf:
-            flavor_assigned = np.array(json.load(jf), dtype=np.int)
-        
-        self.container = np.copy(flavor_assigned)
+        self.container = self.generate_type()
 
         for j in range(self.w):
             for i in range(self.l):
