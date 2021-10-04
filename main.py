@@ -7,18 +7,21 @@ from remi import start, App
 import copy
 import json
 import logging
+from randomPlayer import Player as randomPlayer
+
+root_dir = os.path.dirname(os.path.abspath(__file__))
 
 class IceCreamGame(App):
     def __init__(self, *args):
 
-        res_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'res')
+        res_path = os.path.join(root_dir, 'res')
         super(IceCreamGame, self).__init__(*args, static_file_path={'res':res_path})
 
     def initialize(self):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         # create file handler which logs even debug messages
-        fh = logging.FileHandler('debug.log', mode="w")
+        fh = logging.FileHandler(os.path.join(root_dir,'debug.log'), mode="w")
         fh.setLevel(logging.DEBUG)
         self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
@@ -41,10 +44,12 @@ class IceCreamGame(App):
         self.max_allowed_per_turn = 24
         self.total_turn_per_player = -1
 
-        self.__add_player(Player(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 1")
-        self.__add_player(Player(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 2")
-        self.__add_player(Player(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 3")
-        self.__add_player(Player(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 4")
+        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 1")
+        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 2")
+        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 3")
+        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 4")
+        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 5")
+        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 6")
 
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
@@ -342,7 +347,7 @@ class IceCreamContainer:
         self.ice_cream_type = self.possible_types[self.rng.integers(0, self.possible_types.size)]
 
         self.logger.debug("Using ice cream type {}".format(self.ice_cream_type))
-        with open(os.path.join("types", "{}.json".format(self.ice_cream_type)), "r") as jf:
+        with open(os.path.join(root_dir, "types", "{}.json".format(self.ice_cream_type)), "r") as jf:
             flavor_assigned = np.array(json.load(jf), dtype=np.int)
         
         self.container = np.copy(flavor_assigned)
@@ -403,35 +408,6 @@ class IceCreamContainer:
 
 
 
-
-class Player:
-    def __init__(self, flavor_preference, rng, logger) -> None:
-        self.flavor_preference = flavor_preference
-        self.rng = rng
-        self.logger = logger
-        self.state = None
-        self.initialize()
-
-    def initialize(self):
-        pass
-
-    def get_flavor_preference(self, flavor):
-        return self.flavor_preference.index(flavor) + 1
-    
-    def serve(self, top_layer, curr_level, player_idx, get_flavors, get_player_count, get_served, get_turns_received):
-        x = self.rng.integers(0,4)
-        if x < 3:
-            i = self.rng.integers(0, top_layer.shape[0]-1)
-            j = self.rng.integers(0, top_layer.shape[1]-1)
-            action = "scoop"
-            values = (i,j)
-        else:
-            other_player_list = list(range(0,get_player_count()))
-            other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
-            action = "pass"
-            values = next_player
-        return {"action": action,  "values" : values}
 
 if __name__ == '__main__':
     
