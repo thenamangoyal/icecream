@@ -7,6 +7,7 @@ from remi import start, App
 import copy
 import json
 import logging
+import argparse
 from randomPlayer import Player as randomPlayer
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
@@ -410,6 +411,9 @@ class IceCreamContainer:
 
 
 if __name__ == '__main__':
-    
-    start(IceCreamGame, port=8080, start_browser=False)
-    # start(IceCreamGame, address='0.0.0.0', port=8080, start_browser=False)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port","-p", type=int, default=8080, help="Port to start")
+    parser.add_argument("--start","-s", action="store_true", help="Whether to start browser")
+    parser.add_argument("--address","-a", type=str, default="127.0.0.1", help="Address")
+    args = parser.parse_args()
+    start(IceCreamGame, address=args.address, port=args.port, start_browser=args.start)
