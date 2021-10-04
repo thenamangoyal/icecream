@@ -15,6 +15,7 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 class IceCreamGame(App):
     def __init__(self, args):
         self.args = args
+        self.use_gui = not(args.no_gui)
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -53,7 +54,16 @@ class IceCreamGame(App):
         self.processing_turn = False
         self.served_this_turn = None
         
-        start(IceCreamApp, address=args.address, port=args.port, start_browser=args.start, userdata=(self, None))
+        if self.use_gui:
+            start(IceCreamApp, address=args.address, port=args.port, start_browser=args.start, userdata=(self, None))
+        else:
+            self.logger.debug("No GUI flag specified")
+            self.play_all()
+    
+    def __log(self, message):
+        self.logger.debug(message)
+        if self.use_gui:
+            self.ice_cream_app.label_set_text(message)
     
     def __add_player(self, p, name):
         if name not in self.player_names:
@@ -73,8 +83,7 @@ class IceCreamGame(App):
         return valid_players[self.rng.integers(0, valid_players.size)][0]
     
     def __game_end(self):
-        self.logger.debug("Game finished")
-        self.ice_cream_app.label_set_text("Game ended, as each player played: {} turns".format(self.total_turn_per_player))
+        self.__log("Game ended, as each player played: {} turns".format(self.total_turn_per_player))
         for player_idx, score in enumerate(self.player_scores):
             self.logger.debug("{} turns: {}".format(self.player_names[player_idx], self.turns_received[player_idx]))
         for player_idx, score in enumerate(self.player_scores):
@@ -92,36 +101,37 @@ class IceCreamGame(App):
 
         if new_next_player is not None:
             if new_next_player < 0 or new_next_player >= len(self.players):
-                self.logger.debug("Can't pass to player idx {}, as out of bounds".format(new_next_player))
-                self.ice_cream_app.label_set_text("Can't pass to player idx {}, as out of bounds".format(new_next_player))
+                self.__log("Can't pass to player idx {}, as out of bounds".format(new_next_player))
                 self.next_player = self.__assign_next_player()
                 self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
             elif np.amin(self.turns_received) < self.turns_received[new_next_player]:
-                self.logger.debug("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[new_next_player]))
-                self.ice_cream_app.label_set_text("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[new_next_player]))
+                self.__log("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[new_next_player]))
                 self.next_player = self.__assign_next_player()
                 self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
             else:
-                self.logger.debug("Passed to {} by {}".format(self.player_names[new_next_player], self.player_names[self.next_player]))
-                self.ice_cream_app.label_set_text("Passed to {} by {}".format(self.player_names[new_next_player], self.player_names[self.next_player]))
+                self.__log("{} passed to {}".format(self.player_names[self.next_player], self.player_names[new_next_player]))
                 self.next_player = new_next_player
         else:
-            self.logger.debug("No next player specified by {}".format(self.player_names[self.next_player]))
-            self.ice_cream_app.label_set_text("No next player specified by {}".format(self.player_names[self.next_player]))
+            self.__log("No next player specified by {}".format(self.player_names[self.next_player]))
             self.next_player = self.__assign_next_player()
             self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
         self.logger.debug("Next turn {}".format(self.player_names[self.next_player]))
-        self.ice_cream_app.label_set_text("{}, Next turn {}".format(self.ice_cream_app.label_get_text(), self.player_names[self.next_player]))
+        if self.use_gui:
+            self.ice_cream_app.label_set_text("{}, Next turn {}".format(self.ice_cream_app.label_get_text(), self.player_names[self.next_player]))
 
     def set_app(self, ice_cream_app):
-        self.ice_cream_app = ice_cream_app
+        if self.use_gui:
+            self.ice_cream_app = ice_cream_app
+        else:
+            self.logger.debug("No GUI flag specified, skipping setting app")
 
     def play_all(self):
-        self.ice_cream_app.label_set_text("Playing all turns")
+        self.__log("Playing all turns")
         while np.amin(self.turns_received) < self.total_turn_per_player:
             self.play(run_stepwise=False, do_update=False)
-        self.ice_cream_app.update_score_table()
-        self.ice_cream_app.update_table()
+        if self.use_gui:
+            self.ice_cream_app.update_score_table()
+            self.ice_cream_app.update_table()
         self.__game_end()
 
 
@@ -133,8 +143,7 @@ class IceCreamGame(App):
                     self.next_player = self.__assign_next_player()
                     self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
 
-                self.logger.debug("Current turn {}".format(self.player_names[self.next_player]))
-                self.ice_cream_app.label_set_text("Current turn {}".format(self.player_names[self.next_player]))
+                self.__log("Current turn {}".format(self.player_names[self.next_player]))
 
                 self.processing_turn = True
                 self.served_this_turn = []
@@ -154,7 +163,7 @@ class IceCreamGame(App):
                 pass_next, new_next_player = self.__step_p(self.next_player, do_update=False)
                 if pass_next:
                     break
-            if do_update:
+            if do_update and self.use_gui:
                 self.ice_cream_app.update_score_table()
                 self.ice_cream_app.update_table()
             self.__turn_end(new_next_player)
@@ -186,7 +195,8 @@ class IceCreamGame(App):
                 action = action_values_dict["action"]
                 values = action_values_dict["values"]
                 self.logger.debug("Received action: {} from {}".format(action_values_dict, self.player_names[player_idx]))
-                self.ice_cream_app.label_set_text("{}, {}".format(self.ice_cream_app.label_get_text(), action_values_dict))
+                if self.use_gui:
+                    self.ice_cream_app.label_set_text("{}, {}".format(self.ice_cream_app.label_get_text(), action_values_dict))
                 
                 if action == "scoop":
                     i, j = values
@@ -218,7 +228,7 @@ class IceCreamGame(App):
                 self.logger.debug("Given invalid action_value_dict.")
                 pass_next = True
             
-            if do_update:
+            if do_update and self.use_gui:
                 self.ice_cream_app.update_score_table()
                 self.ice_cream_app.update_table()
         else:
@@ -431,5 +441,6 @@ if __name__ == '__main__':
     parser.add_argument("--port","-p", type=int, default=8080, help="Port to start")
     parser.add_argument("--start","-s", action="store_true", help="Whether to start browser")
     parser.add_argument("--address","-a", type=str, default="127.0.0.1", help="Address")
+    parser.add_argument("--no_gui","-n", action="store_true", help="No GUI")
     args = parser.parse_args()
     ice_cream_game = IceCreamGame(args)
