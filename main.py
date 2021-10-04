@@ -198,6 +198,9 @@ class IceCreamGame(App):
                     if not(i >= 0 and i < self.l-1 and  j >= 0 and j < self.w-1):
                         self.logger.debug("Given out of bounds scoop position {}".format((i,j)))
                         pass_next = True
+                    elif len(self.ice_cream_container.scoop(i,j, dry_run=True)) <= 0:
+                        self.logger.debug("Given empty scooping position, passing to next player")
+                        pass_next = True
                     elif len(self.ice_cream_container.scoop(i,j, dry_run=True)) + len(self.served_this_turn) <= self.max_allowed_per_turn:
                         scooped_items = self.ice_cream_container.scoop(i,j, dry_run=False)
                         for flavor in scooped_items:
@@ -206,6 +209,7 @@ class IceCreamGame(App):
 
                         self.served_this_turn.extend(scooped_items)
                     else:
+                        self.logger.debug("Scooping limit exceeded, passing to next player")
                         pass_next = True
                 elif action == "pass":
                     if values < 0 or values >= len(self.players):
