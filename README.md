@@ -30,6 +30,10 @@ optional arguments:
   --no_gui, -ng         Disable GUI
 ```
 
+## Debugging
+
+The code generates a `debug.log` on every execution, detailing all the turns and steps in the game.
+
 ## Reference
 
 1. https://remi.readthedocs.io/en/latest/remi.html
