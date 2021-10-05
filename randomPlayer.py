@@ -8,10 +8,6 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = None
-        self.initialize()
-
-    def initialize(self):
-        pass
 
     def get_flavor_preference(self, flavor):
         return self.flavor_preference.index(flavor) + 1
