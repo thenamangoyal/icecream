@@ -4,6 +4,8 @@ http://www.cs.columbia.edu/~kar/4444f21/node19.html
 
 ## Installation
 
+Requires **python3.6**
+
 ```bash
 pip install -r requirements.txt
 ```
