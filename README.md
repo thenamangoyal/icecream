@@ -1,6 +1,6 @@
 # Project 2: Ice Cream
 
-http://www.cs.columbia.edu/~kar/4444f21/node19.html
+<http://www.cs.columbia.edu/~kar/4444f21/node19.html>
 
 ## Installation
 
@@ -17,6 +17,7 @@ python main.py
 ```
 
 You can also specify the optional parameters below to disable GUI, disable browser launching, change port and address of server.
+
 ```bash
 usage: main.py [-h] [--port PORT] [--address ADDRESS] [--no_browser]
                [--no_gui]
@@ -36,5 +37,5 @@ The code generates a `debug.log` on every execution, detailing all the turns and
 
 ## Reference
 
-1. https://remi.readthedocs.io/en/latest/remi.html
-1. https://github.com/dddomodossola/remi
+1. <https://remi.readthedocs.io/en/latest/remi.html>
+1. <https://github.com/dddomodossola/remi>
