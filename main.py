@@ -159,10 +159,9 @@ class IceCreamGame(App):
                 self.__turn_end(new_next_player)
 
         else:
-            while len(self.served_this_turn) < self.max_allowed_per_turn:
+            pass_next = False
+            while not pass_next:
                 pass_next, new_next_player = self.__step_p(self.next_player, do_update=False)
-                if pass_next:
-                    break
             if do_update and self.use_gui:
                 self.ice_cream_app.update_score_table()
                 self.ice_cream_app.update_table()
@@ -185,7 +184,7 @@ class IceCreamGame(App):
     def __step_p(self, player_idx, do_update=True):
         pass_next = False
         next_player = None
-        if len(self.served_this_turn) < self.max_allowed_per_turn:
+        if len(self.served_this_turn) <= self.max_allowed_per_turn:
             player = self.players[player_idx]
             top_layer = self.ice_cream_container.get_top_layer()
             curr_level = self.ice_cream_container.get_curr_level()
