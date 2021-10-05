@@ -55,7 +55,7 @@ class IceCreamGame(App):
         self.served_this_turn = None
         
         if self.use_gui:
-            start(IceCreamApp, address=args.address, port=args.port, start_browser=args.start, userdata=(self, None))
+            start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), userdata=(self, None))
         else:
             self.logger.debug("No GUI flag specified")
             self.play_all()
@@ -438,8 +438,8 @@ class IceCreamContainer:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--port","-p", type=int, default=8080, help="Port to start")
-    parser.add_argument("--start","-s", action="store_true", help="Whether to start browser")
     parser.add_argument("--address","-a", type=str, default="127.0.0.1", help="Address")
-    parser.add_argument("--no_gui","-n", action="store_true", help="No GUI")
+    parser.add_argument("--no_browser","-nb", action="store_true", help="No browser in GUI mode")
+    parser.add_argument("--no_gui","-ng", action="store_true", help="No GUI")
     args = parser.parse_args()
     ice_cream_game = IceCreamGame(args)
