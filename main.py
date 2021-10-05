@@ -83,7 +83,7 @@ class IceCreamGame(App):
         return valid_players[self.rng.integers(0, valid_players.size)][0]
     
     def __game_end(self):
-        self.__log("Game ended, as each player played {} turns".format(self.total_turn_per_player))
+        self.__log("Game ended as each player played {} turns".format(self.total_turn_per_player))
         for player_idx, score in enumerate(self.player_scores):
             self.logger.debug("{} turns: {}".format(self.player_names[player_idx], self.turns_received[player_idx]))
         for player_idx, score in enumerate(self.player_scores):
