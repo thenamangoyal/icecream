@@ -26,8 +26,8 @@ optional arguments:
   --port PORT, -p PORT  Port to start
   --address ADDRESS, -a ADDRESS
                         Address
-  --no_browser, -nb     No browser in GUI mode
-  --no_gui, -ng         No GUI
+  --no_browser, -nb     Disable browser launching in GUI mode
+  --no_gui, -ng         Disable GUI
 ```
 
 ## Reference
