@@ -16,7 +16,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-You can also specify the optional paramater to disable GUI, disable browser launching, change port and address of server.
+You can also specify the optional parameters below to disable GUI, disable browser launching, change port and address of server.
 ```bash
 usage: main.py [-h] [--port PORT] [--address ADDRESS] [--no_browser]
                [--no_gui]
