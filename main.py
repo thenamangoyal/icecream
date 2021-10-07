@@ -12,6 +12,7 @@ from random_player import Player as RandomPlayer
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
 
+
 class IceCreamGame(App):
     def __init__(self, args):
         self.args = args
@@ -20,7 +21,7 @@ class IceCreamGame(App):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         # create file handler which logs even debug messages
-        fh = logging.FileHandler(os.path.join(root_dir,'debug.log'), mode="w")
+        fh = logging.FileHandler(os.path.join(root_dir, 'debug.log'), mode="w")
         fh.setLevel(logging.DEBUG)
         self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
@@ -32,7 +33,7 @@ class IceCreamGame(App):
         self.h = self.ice_cream_container.get_height()
 
         self.flavors = self.ice_cream_container.get_flavors()
-        
+
         self.players = []
         self.player_names = []
         self.player_preferences = []
@@ -40,7 +41,7 @@ class IceCreamGame(App):
         self.turns_received = np.zeros(0, dtype=np.int)
         self.player_scores = []
         self.next_player = -1
-        
+
         self.max_allowed_per_turn = 24
         self.total_turn_per_player = -1
 
@@ -54,18 +55,18 @@ class IceCreamGame(App):
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
         self.served_this_turn = None
-        
+
         if self.use_gui:
             start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), userdata=(self, None))
         else:
             self.logger.debug("No GUI flag specified")
             self.play_all()
-    
+
     def __log(self, message):
         self.logger.debug(message)
         if self.use_gui:
             self.ice_cream_app.label_set_text(message)
-    
+
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
             player_preference = self.rng.permutation(self.flavors).tolist()
@@ -73,19 +74,19 @@ class IceCreamGame(App):
             self.players.append(player)
             self.player_preferences.append(player_preference)
             self.player_names.append(player_name)
-            self.served.append({k:0 for k in self.flavors})
+            self.served.append({k: 0 for k in self.flavors})
             self.turns_received = np.zeros(len(self.players), dtype=np.int)
             self.player_scores.append(0)
-            self.total_turn_per_player = math.floor(120/ len(self.players))
+            self.total_turn_per_player = math.floor(120 / len(self.players))
         else:
             self.logger.debug("Failed to insert player as another player with name {} exists.".format(player_name))
-    
+
     def __assign_next_player(self):
         # randomly select among valid players
         least_helpings = np.amin(self.turns_received)
-        valid_players = np.argwhere(self.turns_received==least_helpings)
+        valid_players = np.argwhere(self.turns_received == least_helpings)
         return valid_players[self.rng.integers(0, valid_players.size)][0]
-    
+
     def __game_end(self):
         self.__log("Game ended as each player played {} turns".format(self.total_turn_per_player))
         for player_idx, score in enumerate(self.player_scores):
@@ -96,8 +97,6 @@ class IceCreamGame(App):
         self.logger.debug("Average group score: {}".format(group_score))
         for player_idx, score in enumerate(self.player_scores):
             self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, group_score])))
-
-
 
     def __turn_end(self, new_next_player=None):
         self.processing_turn = False
@@ -138,7 +137,6 @@ class IceCreamGame(App):
             self.ice_cream_app.update_table()
         self.__game_end()
 
-
     def play(self, run_stepwise=False, do_update=True):
         if not self.processing_turn:
             if np.amin(self.turns_received) < self.total_turn_per_player:
@@ -152,7 +150,7 @@ class IceCreamGame(App):
                 self.processing_turn = True
                 self.served_this_turn = []
                 self.turns_received[self.next_player] += 1
-            
+
             else:
                 self.__game_end()
                 return
@@ -200,17 +198,17 @@ class IceCreamGame(App):
                 self.logger.debug("Received action: {} from {}".format(action_values_dict, self.player_names[player_idx]))
                 if self.use_gui:
                     self.ice_cream_app.label_set_text("{}, {}".format(self.ice_cream_app.label_get_text(), action_values_dict))
-                
+
                 if action == "scoop":
                     i, j = values
-                    if not(i >= 0 and i < self.l-1 and  j >= 0 and j < self.w-1):
-                        self.logger.debug("Given out of bounds scoop position {}".format((i,j)))
+                    if not(i >= 0 and i < self.l-1 and j >= 0 and j < self.w-1):
+                        self.logger.debug("Given out of bounds scoop position {}".format((i, j)))
                         pass_next = True
-                    elif len(self.ice_cream_container.scoop(i,j, dry_run=True)) <= 0:
+                    elif len(self.ice_cream_container.scoop(i, j, dry_run=True)) <= 0:
                         self.logger.debug("Given empty scooping position, passing to next player")
                         pass_next = True
-                    elif len(self.ice_cream_container.scoop(i,j, dry_run=True)) + len(self.served_this_turn) <= self.max_allowed_per_turn:
-                        scooped_items = self.ice_cream_container.scoop(i,j, dry_run=False)
+                    elif len(self.ice_cream_container.scoop(i, j, dry_run=True)) + len(self.served_this_turn) <= self.max_allowed_per_turn:
+                        scooped_items = self.ice_cream_container.scoop(i, j, dry_run=False)
                         for flavor in scooped_items:
                             self.served[player_idx][flavor] += 1
                             self.player_scores[player_idx] += len(self.flavors) - self.__get_flavor_preference(player_idx, flavor) + 1
@@ -230,7 +228,7 @@ class IceCreamGame(App):
             else:
                 self.logger.debug("Given invalid action_value_dict.")
                 pass_next = True
-            
+
             if do_update and self.use_gui:
                 self.ice_cream_app.update_score_table()
                 self.ice_cream_app.update_table()
@@ -240,28 +238,27 @@ class IceCreamGame(App):
 
     def __get_flavor_preference(self, player_idx, flavor):
         return self.player_preferences[player_idx].index(flavor) + 1
-            
 
     def get_flavors(self):
         return self.flavors
-    
+
     def get_player_count(self):
         return len(self.players)
-    
+
     def get_player_names(self):
         return copy.deepcopy(self.player_names)
-    
+
     def get_served(self):
         return copy.deepcopy(self.served)
 
     def get_turns_received(self):
         return np.copy(self.turns_received)
 
+
 class IceCreamApp(App):
     def __init__(self, *args):
         res_path = os.path.join(root_dir, 'res')
-        super(IceCreamApp, self).__init__(*args, static_file_path={'res':res_path})
-
+        super(IceCreamApp, self).__init__(*args, static_file_path={'res': res_path})
 
     def main(self, *userdata):
         self.ice_cream_game, _ = userdata
@@ -284,7 +281,7 @@ class IceCreamApp(App):
         self.label = gui.Label("Ice Cream: Ready to start")
         mainContainer.append(self.label)
 
-        self.score_table = gui.TableWidget(2, len(self.ice_cream_game.players)+1, style={'margin':'5px auto'})
+        self.score_table = gui.TableWidget(2, len(self.ice_cream_game.players)+1, style={'margin': '5px auto'})
         self.update_score_table()
 
         for player_idx, _ in enumerate(self.ice_cream_game.player_scores):
@@ -293,12 +290,12 @@ class IceCreamApp(App):
         mainContainer.append(self.score_table)
 
         paths = ["gray.png", "yellow.png", "green.png", "red.png", "blue.png", "cream.png", "pink.png", "orange.png", "brown.png", "cyan.png", "almond.png", "strawberry.png"]
-        self.flavor_to_path = {k:v for k,v in zip(self.ice_cream_game.flavors, paths)}
+        self.flavor_to_path = {k: v for k, v in zip(self.ice_cream_game.flavors, paths)}
         self.flavor_to_path[-1] = "cross.png"
 
-        self.table =  gui.VBox(width='100%', height='100%', style={'margin':'0px auto'})
-        self.tablerows = [gui.HBox(width='100%', height='100%', style={'margin':'0px auto'}) for _ in range(self.ice_cream_game.l)]
-        
+        self.table = gui.VBox(width='100%', height='100%', style={'margin': '0px auto'})
+        self.tablerows = [gui.HBox(width='100%', height='100%', style={'margin': '0px auto'}) for _ in range(self.ice_cream_game.l)]
+
         for j in range(self.ice_cream_game.w):
             for i in range(self.ice_cream_game.l):
                 self.tablerows[j].append(gui.Image("/res:{}".format(self.flavor_to_path[-1])), key=i)
@@ -313,7 +310,7 @@ class IceCreamApp(App):
         self.update_table()
 
         return mainContainer
-    
+
     def update_score_table(self):
         for player_idx, score in enumerate(self.ice_cream_game.player_scores):
             self.score_table.item_at(0, player_idx).set_text("{}".format(self.ice_cream_game.player_names[player_idx]))
@@ -327,18 +324,18 @@ class IceCreamApp(App):
         for j in range(self.ice_cream_game.w):
             for i in range(self.ice_cream_game.l):
                 main_div = gui.Widget()
-                main_div.set_style({"background": "url(/res:{})".format(self.flavor_to_path[top_layer[i,j]])})
+                main_div.set_style({"background": "url(/res:{})".format(self.flavor_to_path[top_layer[i, j]])})
                 main_div.set_size("46px", "46px")
-                border = "4px rgba(0,0,0,{})".format((self.ice_cream_game.h - curr_level[i,j]-1)/ (self.ice_cream_game.h))
+                border = "4px rgba(0,0,0,{})".format((self.ice_cream_game.h - curr_level[i, j]-1) / (self.ice_cream_game.h))
                 main_div.set_style("-webkit-box-shadow:inset 0px 0px 0px {}; -moz-box-shadow:inset 0px 0px 0px {}; box-shadow:inset 0px 0px 0px {}".format(border, border, border))
-                
+
                 label = gui.Label()
                 label.attributes["class"] = "hoverable"
-                label.set_text("{}".format(curr_level[i,j]+1))
+                label.set_text("{}".format(curr_level[i, j]+1))
                 main_div.add_child("label", label)
-                
+
                 self.set_cell(i, j, main_div)
-    
+
     def set_cell(self, i, j, widget):
         self.tablerows[j].append(widget, key=i)
 
@@ -352,7 +349,7 @@ class IceCreamApp(App):
 
     def play_turn_bt_press(self, widget):
         self.ice_cream_game.play(run_stepwise=False)
-    
+
     def play_all_bt_press(self, widget):
         self.ice_cream_game.play_all()
 
@@ -367,13 +364,13 @@ class IceCreamContainer:
     def __init__(self, rng, logger, num_flavors=12) -> None:
         self.rng = rng
         self.logger = logger
-        if num_flavors not in [2,3,4,5,6,8,9,10,12]:
+        if num_flavors not in [2, 3, 4, 5, 6, 8, 9, 10, 12]:
             self.logger.debug("Num flavors {} is not in allowed values, using 12 flavors".format(num_flavors))
             num_flavors = 12
-        self.flavors = list(range(1,num_flavors+1))
-        self.l = 24 # cols
-        self.w = 15 # rows
-        self.h = 8 # height
+        self.flavors = list(range(1, num_flavors+1))
+        self.l = 24  # cols
+        self.w = 15  # rows
+        self.h = 8  # height
         self.container = np.empty((self.l, self.w, self.h), dtype=np.int)
         self.curr_level = np.empty((self.l, self.w), dtype=np.int)
 
@@ -381,13 +378,13 @@ class IceCreamContainer:
 
         for j in range(self.w):
             for i in range(self.l):
-                self.curr_level[i,j] = self.h-1
-    
+                self.curr_level[i, j] = self.h-1
+
     def generate_type(self):
         empty_container = np.empty((self.l, self.w, self.h), dtype=np.int)
 
         assert empty_container.size % len(self.flavors) == 0, "Number of flavors can't divide container size"
-        flavor_repeated = np.repeat(np.array(self.flavors, dtype=np.int), empty_container.size/ len(self.flavors))
+        flavor_repeated = np.repeat(np.array(self.flavors, dtype=np.int), empty_container.size / len(self.flavors))
 
         flavor_assigned = self.rng.permutation(flavor_repeated)
 
@@ -401,7 +398,7 @@ class IceCreamContainer:
 
     def get_width(self):
         return self.w
-    
+
     def get_height(self):
         return self.h
 
@@ -409,44 +406,42 @@ class IceCreamContainer:
         top_layer = np.empty((self.l, self.w), dtype=np.int)
         for j in range(self.w):
             for i in range(self.l):
-                if self.curr_level[i,j] >= 0:
-                    k = self.curr_level[i,j]
-                    top_layer[i,j] = self.container[i,j,k]
+                if self.curr_level[i, j] >= 0:
+                    k = self.curr_level[i, j]
+                    top_layer[i, j] = self.container[i, j, k]
                 else:
-                    top_layer[i,j] = -1
+                    top_layer[i, j] = -1
         return top_layer
-    
+
     def get_curr_level(self):
         return np.copy(self.curr_level)
 
     def scoop(self, i, j, dry_run=False):
         scooped_items = []
 
-        if i >= 0 and i < self.l-1 and  j >= 0 and j < self.w-1:
+        if i >= 0 and i < self.l-1 and j >= 0 and j < self.w-1:
             heights = []
             for iter_j in range(j, j+2):
                 for iter_i in range(i, i+2):
-                    iter_k = self.curr_level[iter_i,iter_j]
+                    iter_k = self.curr_level[iter_i, iter_j]
                     heights.append(iter_k)
             max_depth = np.amax(np.array(heights, dtype=np.int))
             for iter_j in range(j, j+2):
                 for iter_i in range(i, i+2):
-                    iter_k = self.curr_level[iter_i,iter_j]
+                    iter_k = self.curr_level[iter_i, iter_j]
                     if iter_k >= 0 and max_depth == iter_k:
                         scooped_items.append(self.container[iter_i, iter_j, iter_k])
                         if not dry_run:
-                            self.curr_level[iter_i,iter_j] += -1
-        
+                            self.curr_level[iter_i, iter_j] += -1
+
         return scooped_items
-
-
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port","-p", type=int, default=8080, help="Port to start")
-    parser.add_argument("--address","-a", type=str, default="127.0.0.1", help="Address")
-    parser.add_argument("--no_browser","-nb", action="store_true", help="Disable browser launching in GUI mode")
-    parser.add_argument("--no_gui","-ng", action="store_true", help="Disable GUI")
+    parser.add_argument("--port", "-p", type=int, default=8080, help="Port to start")
+    parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
+    parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
+    parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
     args = parser.parse_args()
     ice_cream_game = IceCreamGame(args)

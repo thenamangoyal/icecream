@@ -4,6 +4,7 @@ import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
 
+
 class Player:
     def __init__(self, flavor_preference: List[int], rng: np.random.Generator, logger: logging.Logger) -> None:
         """Initialise the player with given preference.
@@ -17,8 +18,8 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = None
-    
-    def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int],int]]:
+
+    def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function mulitple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
 
         Args:
@@ -41,11 +42,11 @@ class Player:
             i = self.rng.integers(0, top_layer.shape[0]-1)
             j = self.rng.integers(0, top_layer.shape[1]-1)
             action = "scoop"
-            values = (i,j)
+            values = (i, j)
         else:
-            other_player_list = list(range(0,get_player_count()))
+            other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
             next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             action = "pass"
             values = next_player
-        return {"action": action,  "values" : values}
+        return {"action": action,  "values": values}
