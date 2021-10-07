@@ -35,6 +35,7 @@ class IceCreamGame(App):
         
         self.players = []
         self.player_names = []
+        self.player_preferences = []
         self.served = []
         self.turns_received = np.zeros(0, dtype=np.int)
         self.player_scores = []
@@ -43,12 +44,12 @@ class IceCreamGame(App):
         self.max_allowed_per_turn = 24
         self.total_turn_per_player = -1
 
-        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 1")
-        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 2")
-        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 3")
-        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 4")
-        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 5")
-        self.__add_player(randomPlayer(self.rng.permutation(self.flavors).tolist(), self.rng, self.logger), "Group 6")
+        self.__add_player(randomPlayer, "Group 1")
+        self.__add_player(randomPlayer, "Group 2")
+        self.__add_player(randomPlayer, "Group 3")
+        self.__add_player(randomPlayer, "Group 4")
+        self.__add_player(randomPlayer, "Group 5")
+        self.__add_player(randomPlayer, "Group 6")
 
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
@@ -65,16 +66,19 @@ class IceCreamGame(App):
         if self.use_gui:
             self.ice_cream_app.label_set_text(message)
     
-    def __add_player(self, p, name):
-        if name not in self.player_names:
-            self.players.append(p)
-            self.player_names.append(name)
+    def __add_player(self, player_class, player_name):
+        if player_name not in self.player_names:
+            player_preference = self.rng.permutation(self.flavors).tolist()
+            player = player_class(player_preference, self.rng, self.logger)
+            self.players.append(player)
+            self.player_preferences.append(player_preference)
+            self.player_names.append(player_name)
             self.served.append({k:0 for k in self.flavors})
             self.turns_received = np.zeros(len(self.players), dtype=np.int)
             self.player_scores.append(0)
             self.total_turn_per_player = math.floor(120/ len(self.players))
         else:
-            self.logger.debug("Failed to insert player as another player with name {} exists.".format(name))
+            self.logger.debug("Failed to insert player as another player with name {} exists.".format(player_name))
     
     def __assign_next_player(self):
         # randomly select among valid players
@@ -209,7 +213,7 @@ class IceCreamGame(App):
                         scooped_items = self.ice_cream_container.scoop(i,j, dry_run=False)
                         for flavor in scooped_items:
                             self.served[player_idx][flavor] += 1
-                            self.player_scores[player_idx] += len(self.flavors) - player.get_flavor_preference(flavor) + 1
+                            self.player_scores[player_idx] += len(self.flavors) - self.__get_flavor_preference(player_idx, flavor) + 1
 
                         self.served_this_turn.extend(scooped_items)
                     else:
@@ -233,6 +237,9 @@ class IceCreamGame(App):
         else:
             pass_next = True
         return pass_next, next_player
+
+    def __get_flavor_preference(self, player_idx, flavor):
+        return self.player_preferences[player_idx].index(flavor) + 1
             
 
     def get_flavors(self):

@@ -8,9 +8,6 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = None
-
-    def get_flavor_preference(self, flavor):
-        return self.flavor_preference.index(flavor) + 1
     
     def serve(self, top_layer, curr_level, player_idx, get_flavors, get_player_count, get_served, get_turns_received):
         x = self.rng.random()
