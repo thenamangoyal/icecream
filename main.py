@@ -8,7 +8,7 @@ import copy
 import json
 import logging
 import argparse
-from random_player import Player as RandomPlayer
+from random_player import Player as Random_Player
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -45,12 +45,12 @@ class IceCreamGame(App):
         self.max_allowed_per_turn = 24
         self.total_turn_per_player = -1
 
-        self.__add_player(RandomPlayer, "Group 1")
-        self.__add_player(RandomPlayer, "Group 2")
-        self.__add_player(RandomPlayer, "Group 3")
-        self.__add_player(RandomPlayer, "Group 4")
-        self.__add_player(RandomPlayer, "Group 5")
-        self.__add_player(RandomPlayer, "Group 6")
+        self.__add_player(Random_Player, "Group 1")
+        self.__add_player(Random_Player, "Group 2")
+        self.__add_player(Random_Player, "Group 3")
+        self.__add_player(Random_Player, "Group 4")
+        self.__add_player(Random_Player, "Group 5")
+        self.__add_player(Random_Player, "Group 6")
 
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
