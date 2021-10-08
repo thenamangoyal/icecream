@@ -32,7 +32,7 @@ class Player:
             get_turns_received (Callable[[], List[int]]): method which returns a list of integers corresponding to each player, each element at index i tells how many turns a player with index i has played so far.
 
         Returns:
-            Dict[str, Union[Tuple[int],int]]: Return a dictionary of action to take in next step.
+            Dict[str, Union[Tuple[int],int]]: Return a dictionary specifying what action to take in the next step.
             2 possible return values
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
