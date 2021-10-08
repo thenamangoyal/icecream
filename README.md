@@ -2,6 +2,8 @@
 
 <http://www.cs.columbia.edu/~kar/4444f21/node19.html>
 
+[Documentation](https://docs.google.com/document/d/1wCQZNEupmkwjPrOVFU3S3sMxz16ph3gBDZg0aunx46Q/edit?usp=sharing)
+
 ## Installation
 
 Requires **python3.6**
