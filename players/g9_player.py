@@ -37,16 +37,34 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
-        x = self.rng.random()
-        if x < 0.95:
-            i = self.rng.integers(0, top_layer.shape[0]-1)
-            j = self.rng.integers(0, top_layer.shape[1]-1)
-            action = "scoop"
-            values = (i, j)
-        else:
-            other_player_list = list(range(0, get_player_count()))
-            other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
-            action = "pass"
-            values = next_player
-        return {"action": action,  "values": values}
+
+        action = "scoop"
+        max_pos = (-1,-1)
+        max_score = -1
+        for i in range(top_layer.shape[0]-2):
+            for j in range(top_layer.shape[1]-2):
+                score = self.scoop_score(top_layer, curr_level, (i,j))
+                if score > max_score:
+                    max_score = score
+                    max_pos = (i,j)
+
+        return {"action": action,  "values": max_pos}
+
+    def scoop_score(self, top_layer, curr_level, pos):
+        max_level = np.max(curr_level[pos[0]:pos[0]+2, pos[1]:pos[1]+2])
+        score = 0
+        
+        for i in range(pos[0],pos[0]+2):
+            for j in range(pos[1],pos[1]+2):
+                if curr_level[i,j] == max_level and top_layer[i,j] != -1:
+                    # exactly how scores are computed in main.py
+                    score += len(self.flavor_preference) - (self.flavor_preference.index(top_layer[i,j]) + 1) + 1
+        return score
+
+
+
+
+
+
+
+
