@@ -71,7 +71,7 @@ class IceCreamGame(App):
         self.served_this_turn = None
 
         if self.use_gui:
-            start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), userdata=(self, None))
+            start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, None))
         else:
             self.logger.debug("No GUI flag specified")
             self.play_all()
@@ -282,11 +282,15 @@ class IceCreamApp(App):
         mainContainer.style['justify-content'] = 'center'
         mainContainer.style['align-items'] = 'center'
 
-        bt_hbox = gui.HBox(width="30%", style={'text-align': 'center', 'margin': 'auto'})
+        bt_hbox = gui.HBox(width="40%", style={'text-align': 'center', 'margin': 'auto'})
         play_step_bt = gui.Button("Play Step")
         play_turn_bt = gui.Button("Play Turn")
         play_all_bt = gui.Button("Play All")
-        bt_hbox.append([play_step_bt, play_turn_bt, play_all_bt])
+
+        self.automatic_play = gui.CheckBoxLabel("Play Automatically")
+        self.automatic_play.attributes["class"] = "checkbox"
+
+        bt_hbox.append([play_step_bt, play_turn_bt, play_all_bt, self.automatic_play])
 
         play_step_bt.onclick.do(self.play_step_bt_press)
         play_turn_bt.onclick.do(self.play_turn_bt_press)
@@ -324,6 +328,11 @@ class IceCreamApp(App):
         self.update_table()
 
         return mainContainer
+
+    def idle(self):
+        if self.automatic_play.get_value():
+            self.ice_cream_game.play(run_stepwise=True)
+
 
     def update_score_table(self):
         for player_idx, score in enumerate(self.ice_cream_game.player_scores):
