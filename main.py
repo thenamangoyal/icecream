@@ -8,7 +8,7 @@ import copy
 import json
 import logging
 import argparse
-from random_player import Player as Random_Player
+from players.random_player import Player as Random_Player
 from players.g1_player import Player as G1_Player
 from players.g2_player import Player as G2_Player
 from players.g3_player import Player as G3_Player
