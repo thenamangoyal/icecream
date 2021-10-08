@@ -27,7 +27,7 @@ class Player:
             curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 8 to 0, where 8 is highest level at start and 0 means no icecream left at this level
             player_idx (int): index of your player, 0-indexed
             get_flavors (Callable[[], List[int]]): method which returns a list of all possible flavors 
-            get_player_count (Callable[[], int]): number of total players
+            get_player_count (Callable[[], int]): method which returns number of total players
             get_served (Callable[[], List[Dict[int, int]]]): method which returns a list of dictionaries corresponding to each player, each dictionary at index i tells how units of a flavor are present in the bowl of the player with index i. E.g. lets say the fourth element is {1: 0, 2: 8...} means the corresponding player with index 4 has 0 units of flavor 1 and 8 units of flavor
             get_turns_received (Callable[[], List[int]]): method which returns a list of integers corresponding to each player, each element at index i tells how many turns a player with index i has played so far.
 
