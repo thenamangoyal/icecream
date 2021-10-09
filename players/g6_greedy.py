@@ -24,8 +24,8 @@ def get_icecream(self,top_layer,curr_level,level,i,j):
     return value, amount
 def greedy(self, top_layer, curr_level,maxAmount):
     bestValue = -1.0 # best mean value of ice-cream
-    bestPos=(-1,-1) # the position of bestValue
-    bestAmount=0 # the amount of ice-cream of bestValue
+    bestPos=(-1,-1) # position of bestValue
+    bestAmount=0 # amount of ice-cream of bestValue
     for i in range(23):
         for j in range(14):
             level = get_level(self,curr_level,i,j)
