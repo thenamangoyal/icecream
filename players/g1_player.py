@@ -59,6 +59,7 @@ class Player:
                 res -= self.flavor_preference.index(flavor)
             res /= len(choice.flavors)
             res += choice.max_depth * 0.2
+            res += 0.01 * len(choice.flavors)
             return res
         choice = max(choices, key=f)
         self.state[-1] += len(choice.flavors)
