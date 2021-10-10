@@ -19,6 +19,65 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = None
+        self.curr_turn = 0
+        self.num_scoops_in_turn = 0
+
+
+    def calc_flavor_points(self, flavors_scooped, flavor_preference):
+        total = 0
+        for flavor_cell in flavors_scooped:
+            preference_idx = flavor_preference.index(flavor_cell)
+            preference_score = len(self.flavor_preference) - preference_idx
+            total += preference_score
+        return total
+
+
+    def calc_scoop_points(self, i, j, curr_level, top_layer, flavor_preference):
+        if i >= len(curr_level - 1) or j >= len(curr_level[0] - 1):
+            return 0
+        max_level = max(curr_level[i, j], curr_level[i, j+1], curr_level[i+1, j], curr_level[i+1, j+1])
+        flavor_cells = []
+        for i_offset in range(2):
+            for j_offset in range(2):
+                if curr_level[i + i_offset, j + j_offset] == max_level:
+                    flavor_cells.append(top_layer[i + i_offset, j + j_offset])
+        return self.calc_flavor_points(flavor_cells, flavor_preference)
+
+
+    def find_max_scoop(self, top_layer, curr_level, flavor_preference):
+        max_scoop_loc = (0, 0)
+        max_scoop_points = 0
+        for i in range(len(top_layer) - 1):
+            for j in range(len(top_layer[0]) - 1):
+                scoop_points = self.calc_scoop_points(i, j, curr_level, top_layer, flavor_preference)
+                if scoop_points > max_scoop_points:
+                    max_scoop_points = scoop_points
+                    max_scoop_loc = (i, j)
+
+        return max_scoop_loc
+
+
+    def get_player_approximate_fav(self, player_count, served) -> List[int] :
+        player_approximate_fav = [0 for i in range(player_count)]
+        for i in range(player_count) :
+            player_approximate_fav[i] = max(served[i],key=served[i].get)-1
+
+        #adjusted to refect 0 index
+        return player_approximate_fav
+
+
+    def get_top_layer_flavour_count(self, top_layer:np.ndarray) -> List[int] :
+        top_layer_flavour_count = [0 for x in self.flavor_preference]
+
+        m,n = top_layer.shape
+        for i in range(m) :
+            for j in range(n) :
+                if top_layer[i][j] >= 1 :
+                    top_layer_flavour_count[top_layer[i][j]-1]+=1
+
+        #0 indexed
+        return top_layer_flavour_count
+
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
@@ -38,81 +97,56 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
+        if get_turns_received()[player_idx] > self.curr_turn:
+            self.num_scoops_in_turn = 0
+            self.curr_turn = get_turns_received()[player_idx]
 
-        #state to keep track of how many times serve was called
-        if self.state==None :
-            self.state = [1]
-        else :
-            self.state[0]+=1
-
-        #since we keep scooping for 6 times
-        if self.state[0]%7 != 0:
-            '''i = self.rng.integers(0, top_layer.shape[0]-1)
-            j = self.rng.integers(0, top_layer.shape[1]-1)'''
-            temp = self.state[0]//7
-            values = (2+temp, 3+temp)
-            action = "scoop"
-            
-            
-        else:
+        if self.num_scoops_in_turn >= 6:
             '''other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
             next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             values = next_player'''
 
-            action = "pass"
-
-            #calculate the current iteration based on our player index, since our player is called latest
+            # calculate the current iteration based on our player index, since our player is called latest
             turns_received = get_turns_received()
             curr_iteration = turns_received[player_idx]
             not_next = 1
 
-            #####available_players = [i for i in range(len(turns_received)) if turns_received[i]<curr_iteration]  
+            #####available_players = [i for i in range(len(turns_received)) if turns_received[i]<curr_iteration]
 
-            #calculate the max amount of flavour visible on the top layer, store the value if less than 24 or store 24, since in one turn, player can only scoop 24
+            # calculate the max amount of flavour visible on the top layer, store the value if less than 24 or store 24, since in one turn, player can only scoop 24
             top_layer_flavour_count = self.get_top_layer_flavour_count(top_layer)
             max_same_flavour = max(top_layer_flavour_count)
             max_same_flavour = min(24, max_same_flavour)
 
-            #get topmost preference of the player = estimated as the flavour having most units in player's bowl
+            # get topmost preference of the player = estimated as the flavour having most units in player's bowl
             player_approximate_fav = self.get_player_approximate_fav(get_player_count(), get_served())
 
-            #use curr_iteration to check which players are available to pass
-            available_player_fav = [(i, player_approximate_fav[i]) for i in range(len(player_approximate_fav)) if turns_received[i]<curr_iteration]
+            # use curr_iteration to check which players are available to pass
+            available_player_fav = [(i, player_approximate_fav[i]) for i in range(len(player_approximate_fav)) if
+                                    turns_received[i] < curr_iteration]
 
-            #randomly select a player if while logic doesn't work, given our player is not last in current iteration
-            if len(available_player_fav) > 0 :
+            # randomly select a player if while logic doesn't work, given our player is not last in current iteration
+            if len(available_player_fav) > 0:
                 values, flavour = choice(available_player_fav)
-            else : #pass to ourself in the next iteration
+            else:  # pass to ourself in the next iteration
                 values = player_idx
 
-            #take a player for the available players and check if his flavour preference has 24 units or less depending on max_same_flavour, if yes pass to that player
-            while not_next and len(available_player_fav)>0 :
+            # take a player for the available players and check if his flavour preference has 24 units or less depending on max_same_flavour, if yes pass to that player
+            while not_next and len(available_player_fav) > 0:
                 player, flavour = available_player_fav.pop()
-                if top_layer_flavour_count[flavour] >= max_same_flavour :
+                if top_layer_flavour_count[flavour] >= max_same_flavour:
                     values = player
                     not_next = 0
-            
+
+            action = "pass"
+            values = values
+        else:
+            self.num_scoops_in_turn += 1
+
+            action = "scoop"
+            values = self.find_max_scoop(top_layer, curr_level, self.flavor_preference)
+
         return {"action": action,  "values": values}
 
-    def get_player_approximate_fav(self, player_count, served) -> List[int] :
-        player_approximate_fav = [0 for i in range(player_count)]
-        for i in range(player_count) :
-            player_approximate_fav[i] = max(served[i],key=served[i].get)-1
-
-        #adjusted to refect 0 index
-        return player_approximate_fav
-
-    def get_top_layer_flavour_count(self, top_layer:np.ndarray) -> List[int] :
-        top_layer_flavour_count = [0 for x in self.flavor_preference]
-
-        m,n = top_layer.shape
-        for i in range(m) :
-            for j in range(n) :
-                if top_layer[i][j] >= 1 :
-                    top_layer_flavour_count[top_layer[i][j]-1]+=1
-
-        #0 indexed
-        return top_layer_flavour_count
-        
 
