@@ -33,7 +33,7 @@ def generate_choices(top_layer: np.ndarray, curr_level: np.ndarray) -> List[Choi
 
 def choose_next_player(now_turn: int, possible_players: List[int], served_situation: List[Dict[int, int]],
                        top_layer: np.ndarray, curr_level: np.ndarray, rng: np.random.Generator,
-                       group_id: int, my_flavor_preference: List[int]) -> int:
+                       player_idx: int, my_flavor_preference: List[int], total_players: int) -> int:
     if len(possible_players) == 1:
         return possible_players[0]
 
@@ -43,7 +43,7 @@ def choose_next_player(now_turn: int, possible_players: List[int], served_situat
 
     # if there are no candidates, which means our team is the last one to serve
     if len(possible_players) == 0:
-        possible_players = [i for i in range(10) if i != group_id]
+        possible_players = [i for i in range(total_players) if i != player_idx]
 
     choices = generate_choices(top_layer, curr_level)
     # if all ice cream has been taken
@@ -131,19 +131,20 @@ class Player:
         self.logger.info(choices)
         if not choices:
             turns = get_turns_received()
+            total_players = get_player_count()
             players = list()
             for idx, turn in enumerate(turns):
-                if turn == min(turns) and idx != self.group_id:
+                if turn == min(turns) and idx != player_idx:
                     players.append(idx)
             self.state.append(0)
             # if we choose the person with the highest score
             next_player = choose_next_player(min(turns), players, get_served(), top_layer, curr_level, self.rng,
-                                             self.group_id, self.flavor_preference)
+                                             player_idx, self.flavor_preference, total_players)
             return dict(action="pass", values=next_player)
 
             # if we just randomly choose one person
             # if len(players) == 0:
-            #     players = [i for i in range(10) if i != self.group_id]
+            #     players = [i for i in range(total_players) if i != player_idx]
             # return dict(action="pass", values=self.rng.choice(players))
 
         def f(choice: Choice) -> float:
