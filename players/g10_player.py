@@ -3,6 +3,7 @@ import numpy as np
 import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
+from random import choice
 
 
 class Player:
@@ -37,16 +38,81 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
-        x = self.rng.random()
-        if x < 0.95:
-            i = self.rng.integers(0, top_layer.shape[0]-1)
-            j = self.rng.integers(0, top_layer.shape[1]-1)
+
+        #state to keep track of how many times serve was called
+        if self.state==None :
+            self.state = [1]
+        else :
+            self.state[0]+=1
+
+        #since we keep scooping for 6 times
+        if self.state[0]%7 != 0:
+            '''i = self.rng.integers(0, top_layer.shape[0]-1)
+            j = self.rng.integers(0, top_layer.shape[1]-1)'''
+            temp = self.state[0]//7
+            values = (2+temp, 3+temp)
             action = "scoop"
-            values = (i, j)
+            
+            
         else:
-            other_player_list = list(range(0, get_player_count()))
+            '''other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
             next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            values = next_player'''
+
             action = "pass"
-            values = next_player
+
+            #calculate the current iteration based on our player index, since our player is called latest
+            turns_received = get_turns_received()
+            curr_iteration = turns_received[player_idx]
+            not_next = 1
+
+            #####available_players = [i for i in range(len(turns_received)) if turns_received[i]<curr_iteration]  
+
+            #calculate the max amount of flavour visible on the top layer, store the value if less than 24 or store 24, since in one turn, player can only scoop 24
+            top_layer_flavour_count = self.get_top_layer_flavour_count(top_layer)
+            max_same_flavour = max(top_layer_flavour_count)
+            max_same_flavour = min(24, max_same_flavour)
+
+            #get topmost preference of the player = estimated as the flavour having most units in player's bowl
+            player_approximate_fav = self.get_player_approximate_fav(get_player_count(), get_served())
+
+            #use curr_iteration to check which players are available to pass
+            available_player_fav = [(i, player_approximate_fav[i]) for i in range(len(player_approximate_fav)) if turns_received[i]<curr_iteration]
+
+            #randomly select a player if while logic doesn't work, given our player is not last in current iteration
+            if len(available_player_fav) > 0 :
+                values, flavour = choice(available_player_fav)
+            else : #pass to ourself in the next iteration
+                values = player_idx
+
+            #take a player for the available players and check if his flavour preference has 24 units or less depending on max_same_flavour, if yes pass to that player
+            while not_next and len(available_player_fav)>0 :
+                player, flavour = available_player_fav.pop()
+                if top_layer_flavour_count[flavour] >= max_same_flavour :
+                    values = player
+                    not_next = 0
+            
         return {"action": action,  "values": values}
+
+    def get_player_approximate_fav(self, player_count, served) -> List[int] :
+        player_approximate_fav = [0 for i in range(player_count)]
+        for i in range(player_count) :
+            player_approximate_fav[i] = max(served[i],key=served[i].get)-1
+
+        #adjusted to refect 0 index
+        return player_approximate_fav
+
+    def get_top_layer_flavour_count(self, top_layer:np.ndarray) -> List[int] :
+        top_layer_flavour_count = [0 for x in self.flavor_preference]
+
+        m,n = top_layer.shape
+        for i in range(m) :
+            for j in range(n) :
+                if top_layer[i][j] >= 1 :
+                    top_layer_flavour_count[top_layer[i][j]-1]+=1
+
+        #0 indexed
+        return top_layer_flavour_count
+        
+
