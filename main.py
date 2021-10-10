@@ -9,15 +9,15 @@ import json
 import logging
 import argparse
 from players.random_player import Player as Random_Player
-from players.g1_player import Player as G1_Player
-from players.g2_player import Player as G2_Player
-from players.g3_player import Player as G3_Player
-from players.g4_player import Player as G4_Player
-from players.g5_player import Player as G5_Player
-from players.g6_player import Player as G6_Player
-from players.g7_player import Player as G7_Player
-from players.g8_player import Player as G8_Player
-from players.g9_player import Player as G9_Player
+from players.g10_player import Player as G1_Player
+from players.g10_player import Player as G2_Player
+from players.g10_player import Player as G3_Player
+from players.g10_player import Player as G4_Player
+from players.g10_player import Player as G5_Player
+from players.g10_player import Player as G6_Player
+from players.g10_player import Player as G7_Player
+from players.g10_player import Player as G8_Player
+from players.g10_player import Player as G9_Player
 from players.g10_player import Player as G10_Player
 
 root_dir = os.path.dirname(os.path.abspath(__file__))

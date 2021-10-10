@@ -22,7 +22,6 @@ class Player:
         self.curr_turn = 0
         self.num_scoops_in_turn = 0
 
-
     def calc_flavor_points(self, flavors_scooped, flavor_preference):
         total = 0
         for flavor_cell in flavors_scooped:
@@ -31,18 +30,16 @@ class Player:
             total += preference_score
         return total
 
-
     def calc_scoop_points(self, i, j, curr_level, top_layer, flavor_preference):
         if i >= len(curr_level - 1) or j >= len(curr_level[0] - 1):
             return 0
-        max_level = max(curr_level[i, j], curr_level[i, j+1], curr_level[i+1, j], curr_level[i+1, j+1])
+        max_level = max(curr_level[i, j], curr_level[i, j + 1], curr_level[i + 1, j], curr_level[i + 1, j + 1])
         flavor_cells = []
         for i_offset in range(2):
             for j_offset in range(2):
                 if curr_level[i + i_offset, j + j_offset] == max_level:
                     flavor_cells.append(top_layer[i + i_offset, j + j_offset])
         return self.calc_flavor_points(flavor_cells, flavor_preference)
-
 
     def find_max_scoop(self, top_layer, curr_level, flavor_preference):
         max_scoop_loc = (0, 0)
@@ -56,30 +53,30 @@ class Player:
 
         return max_scoop_loc
 
-
-    def get_player_approximate_fav(self, player_count, served) -> List[int] :
+    def get_player_approximate_fav(self, player_count, served) -> List[int]:
         player_approximate_fav = [0 for i in range(player_count)]
-        for i in range(player_count) :
-            player_approximate_fav[i] = max(served[i],key=served[i].get)-1
+        for i in range(player_count):
+            player_approximate_fav[i] = max(served[i], key=served[i].get) - 1
 
-        #adjusted to refect 0 index
+        # adjusted to refect 0 index
         return player_approximate_fav
 
-
-    def get_top_layer_flavour_count(self, top_layer:np.ndarray) -> List[int] :
+    def get_top_layer_flavour_count(self, top_layer: np.ndarray) -> List[int]:
         top_layer_flavour_count = [0 for x in self.flavor_preference]
 
-        m,n = top_layer.shape
-        for i in range(m) :
-            for j in range(n) :
-                if top_layer[i][j] >= 1 :
-                    top_layer_flavour_count[top_layer[i][j]-1]+=1
+        m, n = top_layer.shape
+        for i in range(m):
+            for j in range(n):
+                if top_layer[i][j] >= 1:
+                    top_layer_flavour_count[top_layer[i][j] - 1] += 1
 
-        #0 indexed
+        # 0 indexed
         return top_layer_flavour_count
 
-
-    def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
+    def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
+              get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int],
+              get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[
+        str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
 
         Args:
@@ -111,10 +108,10 @@ class Player:
             turns_received = get_turns_received()
             curr_iteration = turns_received[player_idx]
             not_next = 1
-
             #####available_players = [i for i in range(len(turns_received)) if turns_received[i]<curr_iteration]
 
-            # calculate the max amount of flavour visible on the top layer, store the value if less than 24 or store 24, since in one turn, player can only scoop 24
+            # calculate the max amount of flavour visible on the top layer,
+            # store the value if less than 24 or store 24, since in one turn, player can only scoop 24
             top_layer_flavour_count = self.get_top_layer_flavour_count(top_layer)
             max_same_flavour = max(top_layer_flavour_count)
             max_same_flavour = min(24, max_same_flavour)
@@ -135,9 +132,24 @@ class Player:
             # take a player for the available players and check if his flavour preference has 24 units or less depending on max_same_flavour, if yes pass to that player
             while not_next and len(available_player_fav) > 0:
                 player, flavour = available_player_fav.pop()
+
+            # our top half favorite flavors (floor)
+            our_favs = self.flavor_preference[:(len(self.flavor_preference) // 2)]
+
+            # calculate a list of no conflict, available players in hope to maximize our score first before we consider other members
+            no_conflict_player_fav = []
+            for player, flavour in available_player_fav:
+                if flavour not in our_favs:
+                    no_conflict_player_fav.append((player, flavour))
+            self.logger.info("available player fav is ${}".format(available_player_fav))
+            self.logger.info("no conflict player fav is ${}".format(no_conflict_player_fav))
+
+            # take a player for the available players and check if their favorite flavour has 24 units
+            # or less depending on max_same_flavour, if yes pass to that player, try to maximize family members score if no conflict
+            while not_next and len(no_conflict_player_fav) > 0:
+                player, flavour = no_conflict_player_fav.pop()
                 if top_layer_flavour_count[flavour] >= max_same_flavour:
                     values = player
-                    not_next = 0
 
             action = "pass"
             values = values
@@ -147,6 +159,4 @@ class Player:
             action = "scoop"
             values = self.find_max_scoop(top_layer, curr_level, self.flavor_preference)
 
-        return {"action": action,  "values": values}
-
-
+        return {"action": action, "values": values}
