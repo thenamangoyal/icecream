@@ -19,6 +19,35 @@ class Player:
         self.logger = logger
         self.state = None
 
+    def get_highest_score(self,top_layer,curr_level):
+        score = 0
+        max_i = -1
+        max_j = -1
+        for i in range(top_layer.shape[0]-1):
+            for j in range(top_layer.shape[1]-1):
+                spoon_level = [curr_level[i,j],curr_level[i+1,j],curr_level[i,j+1],curr_level[i+1,j+1]]
+                # if we choose this, our turn will be terminated,
+                # unless it is the last step, we can use state to optimize.
+                # like when 20<state<24, we can spoon 0 if the total 4 can give us greatest score.
+                lowest_level = min(spoon_level)
+                if lowest_level == 0:
+                    continue
+                else:
+                    level_can_get = [(level-lowest_level) for level in spoon_level]
+                curr_flavors = [top_layer[i,j],top_layer[i+1,j],top_layer[i,j+1],top_layer[i+1,j+1]]
+                curr_score = 0
+                for index,flavor in enumerate(curr_flavors):
+                    if level_can_get == 0:
+                        continue
+                    else:
+                        curr_score += (12-self.flavor_preference.index(flavor))
+                if curr_score>score:
+                    score=curr_score
+                    max_i=i
+                    max_j=j
+        print(score)
+        return max_i,max_j
+
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
 
@@ -38,15 +67,19 @@ class Player:
             {"action": "pass",  "values" : i} pass to next player with index i
         """
         x = self.rng.random()
-        if x < 0.95:
-            i = self.rng.integers(0, top_layer.shape[0]-1)
-            j = self.rng.integers(0, top_layer.shape[1]-1)
+        if x < 1:
+            # i = self.rng.integers(0, top_layer.shape[0]-1)
+            # j = self.rng.integers(0, top_layer.shape[1]-1)
             action = "scoop"
-            values = (i, j)
+            values = self.get_highest_score(top_layer,curr_level)
         else:
-            other_player_list = list(range(0, get_player_count()))
-            other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
-            action = "pass"
-            values = next_player
+            # other_player_list = list(range(0, get_player_count()))
+            # other_player_list.remove(player_idx)
+            # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            # action = "pass"
+            # values = next_player
+            # i = self.rng.integers(0, top_layer.shape[0]-1)
+            # j = self.rng.integers(0, top_layer.shape[1]-1)
+            action = "scoop"
+            values = (1, 0)
         return {"action": action,  "values": values}
