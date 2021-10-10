@@ -37,7 +37,7 @@ class Player:
                 curr_flavors = [top_layer[i,j],top_layer[i+1,j],top_layer[i,j+1],top_layer[i+1,j+1]]
                 curr_score = 0
                 for index,flavor in enumerate(curr_flavors):
-                    if level_can_get == 0:
+                    if level_can_get[index] == 0:
                         continue
                     else:
                         curr_score += (12-self.flavor_preference.index(flavor))
