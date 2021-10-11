@@ -12,17 +12,25 @@ class Player:
         Args:
             flavor_preference (List[int]): flavor preference, most flavored
                 flavor is first element in the list and last element is least
-                preferred flavor rng (np.random.Generator): numpy random number
-                generator, use this for same player behvior across run logger
-            
-            (logging.Logger): logger use this like logger.info("message")
+                preferred flavor
+
+            rng (np.random.Generator): numpy random number
+                generator, use this for same player behavior across run
+
+            logger (logging.Logger): logger use this like logger.info("message")
         """
         self.flavor_preference = flavor_preference
         self.rng = rng
         self.logger = logger
-        self.state = None
+        self.state = {
+            'others_pref': [],
+            'current_served': None
+        }
 
-    def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
+    def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
+              get_flavors: Callable[[], List[int]],
+              get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]],
+              get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn.
         In each turn the simulator calls this serve function multiple times for
         each step for a single player, until the player has scooped 24 units of
@@ -69,8 +77,8 @@ class Player:
         """
         x = self.rng.random()
         if x < 0.95:
-            i = self.rng.integers(0, top_layer.shape[0]-1)
-            j = self.rng.integers(0, top_layer.shape[1]-1)
+            i = self.rng.integers(0, top_layer.shape[0] - 1)
+            j = self.rng.integers(0, top_layer.shape[1] - 1)
             action = "scoop"
             values = (i, j)
         else:
@@ -79,4 +87,113 @@ class Player:
             next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             action = "pass"
             values = next_player
-        return {"action": action,  "values": values}
+
+        # get knowledge of other players
+        pref_ranking = self.guess_player_pref_from_bowl(0, get_served(), get_flavors())  # [0] - favorite
+        added_flavors = self.diff_served(get_served(), self.state['current_served'])
+
+        # update current served
+        self.state['current_served'] = get_served()
+
+        return {"action": action, "values": values}
+
+    @staticmethod
+    def guess_player_pref_from_bowl(player, current_served, flavors):
+        """
+        Sort the contents of player's current_served bowl and generate a preference ranking accordingly.
+        :param player: target player.
+        :param current_served: player's bowl.
+        :param flavors: all flavors.
+        :return: a list of flavor rankings. Preferred flavors are ranked toward the front.
+        """
+        bowl = current_served[player]
+        flavors_in_bowl, amounts_in_bowl = [], []
+        for key in bowl.keys():
+            if bowl[key] > 0:
+                flavors_in_bowl.append(key)
+                amounts_in_bowl.append(bowl[key])
+        amount_indices = np.argsort(amounts_in_bowl)[::-1]
+        pref_ranking = [flavors_in_bowl[i] for i in amount_indices]
+
+        # TODO what if some flavor(s) didn't appear in the bowl? Do we pad the ranking list at the end?
+        # pref_ranking += [-1] * (len(flavors) - len(pref_ranking))
+
+        return pref_ranking
+
+    def guess_player_dislikes_from_choice(self, player, added_flavors, top_layer_before_serving):
+        """
+        Guess the flavors that player probably dislikes based on the top_layer situation before they serve themselves,
+        and what flavors they end up choosing. Can only be used when we pass the container directly to player.
+        :param player: the player to be guessed on.
+        :param added_flavors: output of diff_served().
+        :param top_layer_before_serving: visible flavors on the top layer when we pass the container to player.
+        :return: a list of flavors that the player probably doesn't like. Currently the strategy is to choose flavors
+                 that are on top_layer but the player doesn't end up choosing.
+        TODO: this function needs to be called one turn after we pass the container to player, which is impossible.
+              Currently it's not being used but we may use the idea later.
+        """
+        if len(added_flavors[player]) == 0:
+            print("WARNING: No added flavor info for this player!")
+            return None
+        dislikes = []
+        top_layer_summed = self.sum_top_layer(top_layer_before_serving)
+        top_layer_flavors = top_layer_summed.keys()
+        for flavor in top_layer_flavors:
+            if int(flavor) not in added_flavors[player]:
+                dislikes.append(flavor)
+
+        return dislikes
+
+    @staticmethod
+    def is_valid_next_player(turns_received, next_player):
+        """
+        Checks if next_player is a valid choice for passing the container to for this turn.
+        :param turns_received: output of get_turns_received().
+        :param next_player: player in question.
+        :return: True if next_player is a valid choice.
+        """
+        if np.amin(turns_received) < turns_received[next_player]:
+            return False
+        return True
+
+    @staticmethod
+    def diff_served(new_served, current_served=None):
+        """
+        Compare new_served against current_served and output changes in the container.
+        :param new_served: new container situation.
+        :param current_served: current container situation. None if new_served is from the first turn.
+        :return: changed_flavors[player_i] contains a list of flavors that player_i has newly added to
+                 their bowl since current_served.
+        TODO: Take the amount into consideration?
+        """
+        changed_flavors = []
+
+        for p_id in range(len(new_served)):
+            changed_flavors.append([])
+            for flavor in new_served[p_id].keys():
+                if current_served:
+                    if new_served[p_id][flavor] > current_served[p_id][flavor]:
+                        changed_flavors[p_id].append(flavor)
+                else:
+                    if new_served[p_id][flavor] > 0:
+                        changed_flavors[p_id].append(flavor)
+
+        return changed_flavors
+
+    @staticmethod
+    def sum_top_layer(top_layer):
+        """
+        Summarize top_layer information by flavor.
+        :param top_layer: visible flavors.
+        :return: top_layer_summed['flavor_i'] is the amount of flavor_i currently visible on top_layer.
+        TODO: come up with other ways to convert the top layer flavor info into useful information.
+        """
+        top_layer_summed = {}
+        for i in range(np.shape(top_layer)[0]):
+            for j in range(np.shape(top_layer)[1]):
+                if str(top_layer[i][j]) not in top_layer_summed:
+                    top_layer_summed[str(top_layer[i][j])] = 0
+                top_layer_summed[str(top_layer[i][j])] += 1
+
+        return top_layer_summed
+
