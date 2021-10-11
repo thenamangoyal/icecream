@@ -393,7 +393,7 @@ class IceCreamContainer:
         self.rng = rng
         self.logger = logger
         if num_flavors not in constants.num_flavor_choices:
-            self.logger.debug("Num flavors {} is not in allowed values, using 12 flavors".format(num_flavors))
+            self.logger.debug("Num flavors {} is not in allowed values, using {} flavors".format(num_flavors, constants.default_num_flavor_choice))
             num_flavors = constants.default_num_flavor_choice
         self.logger.debug("Generating ice cream with {} flavors".format(num_flavors))
         self.flavors = list(range(1, num_flavors+1))
