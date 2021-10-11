@@ -26,10 +26,37 @@ class Player:
             'current_served': None
         }
 
+    def valid_scoop(self, curr_level, x, y):
+        """Helper function: returns whether a scoop at an index x,y is valid or not"""
+        d = curr_level[x,y]
+        if curr_level[x+1,y] <= d and curr_level[x,y+1] <= d and curr_level[x+1,y+1] <= d:
+            return True
+        return False
+
+    def scoop_value(self, top_layer, curr_level, x, y):
+        """Helper function: returns the value the player gets for a scoop at index x,y"""
+        d = curr_level[x, y]
+        if d > 0:
+            units = 1
+            flav_total = len(self.flavor_preference) - self.flavor_preference.index(top_layer[x,y]) + 1
+            if curr_level[x+1, y] == d:
+                flav_total += len(self.flavor_preference) - self.flavor_preference.index(top_layer[x+1,y]) + 1
+                units += 1
+            if curr_level[x, y+1] == d:
+                flav_total += len(self.flavor_preference) - self.flavor_preference.index(top_layer[x,y+1]) + 1
+                units += 1
+            if curr_level[x+1, y+1] == d:
+                flav_total += len(self.flavor_preference) - self.flavor_preference.index(top_layer[x+1,y+1]) + 1
+                units += 1
+            return (flav_total, (x, y), units)
+        else:
+            return (0, (x,y), 0)
+
+
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
-              get_flavors: Callable[[], List[int]],
-              get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]],
-              get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
+          get_flavors: Callable[[], List[int]],
+          get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]],
+          get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn.
         In each turn the simulator calls this serve function multiple times for
         each step for a single player, until the player has scooped 24 units of
@@ -74,13 +101,23 @@ class Player:
 
             {"action": "pass", "values" : i} pass to next player with index i
         """
-        x = self.rng.random()
-        if x < 0.95:
-            i = self.rng.integers(0, top_layer.shape[0] - 1)
-            j = self.rng.integers(0, top_layer.shape[1] - 1)
+        if self.state is None:
+            self.state = 0
+        # build priority queue
+        p_queue = []
+        for x in range(0, top_layer.shape[0]-1):
+            for y in range(0, top_layer.shape[1]-1):
+                if self.valid_scoop(curr_level, x, y):
+                    p_queue.append(self.scoop_value(top_layer, curr_level, x, y))
+        p_queue.sort(reverse=True)
+        # if there is still more ice-cream to take, make a scoop
+        if self.state < 24:
             action = "scoop"
-            values = (i, j)
+            value, (x, y), units = p_queue.pop(0)
+            self.state += units
+            values = (x, y)
         else:
+            self.state = 0
             other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
             next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
