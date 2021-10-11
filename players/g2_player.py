@@ -31,19 +31,19 @@ class Player:
                 # like when 20<state<24, we can spoon 0 if the total 4 can give us greatest score.
 
                 ## the part I will modify
-                # highest_level = max(spoon_level)
-                # lowest_level = min(spoon_level)
-                # if lowest_level == 0:
-                #     continue
-                # else:
-                #     level_can_get = [(level-lowest_level) for level in spoon_level]
+                lowest_level = min(spoon_level)
+                highest_level = max(spoon_level)
+                if lowest_level == 0:
+                    continue
+                else:
+                    level_can_get = [(level-lowest_level) for level in spoon_level]
 
                 curr_flavors = [top_layer[i,j],top_layer[i+1,j],top_layer[i,j+1],top_layer[i+1,j+1]]
                 curr_score = 0
                 for index,flavor in enumerate(curr_flavors):
                     if level_can_get[index] == 0:
                         continue
-                    else:
+                    if spoon_level[index] == highest_level:
                         curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
                 if curr_score>score:
                     score=curr_score
