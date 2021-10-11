@@ -29,7 +29,7 @@ class Player:
     def scoop_value(self, top_layer, curr_level, x, y):
         """Helper function: returns the value the player gets for a scoop at index x,y"""
         d = curr_level[x, y]
-        if d > 0:
+        if d >= 0:
             units = 1
             flav_total = len(self.flavor_preference) - self.flavor_preference.index(top_layer[x,y]) + 1
             if curr_level[x+1, y] == d:
