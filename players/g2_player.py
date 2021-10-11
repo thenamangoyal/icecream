@@ -17,7 +17,7 @@ class Player:
         self.flavor_preference = flavor_preference
         self.rng = rng
         self.logger = logger
-        self.state = None
+        self.state = 0
 
     def get_highest_score(self,top_layer,curr_level):
         score = 0
@@ -31,18 +31,12 @@ class Player:
                 # like when 20<state<24, we can spoon 0 if the total 4 can give us greatest score.
 
                 ## the part I will modify
-                lowest_level = min(spoon_level)
                 highest_level = max(spoon_level)
-                if lowest_level == 0:
+                if highest_level <= 0: # zero will get no score and -1 will get terminated, so we skip
                     continue
-                else:
-                    level_can_get = [(level-lowest_level) for level in spoon_level]
-
                 curr_flavors = [top_layer[i,j],top_layer[i+1,j],top_layer[i,j+1],top_layer[i+1,j+1]]
                 curr_score = 0
                 for index,flavor in enumerate(curr_flavors):
-                    if level_can_get[index] == 0:
-                        continue
                     if spoon_level[index] == highest_level:
                         curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
                 if curr_score>score:
@@ -70,20 +64,17 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
-        x = self.rng.random()
-        if x < 1:
-            # i = self.rng.integers(0, top_layer.shape[0]-1)
-            # j = self.rng.integers(0, top_layer.shape[1]-1)
-            action = "scoop"
-            values = self.get_highest_score(top_layer,curr_level)
-        else:
-            # other_player_list = list(range(0, get_player_count()))
-            # other_player_list.remove(player_idx)
-            # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
-            # action = "pass"
-            # values = next_player
-            # i = self.rng.integers(0, top_layer.shape[0]-1)
-            # j = self.rng.integers(0, top_layer.shape[1]-1)
-            action = "scoop"
-            values = (1, 0)
+
+
+        action = "scoop"
+        values = self.get_highest_score(top_layer,curr_level)
+        #     # other_player_list = list(range(0, get_player_count()))
+        #     # other_player_list.remove(player_idx)
+        #     # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+        #     # action = "pass"
+        #     # values = next_player
+        #     # i = self.rng.integers(0, top_layer.shape[0]-1)
+        #     # j = self.rng.integers(0, top_layer.shape[1]-1)
+        #     action = "scoop"
+        #     values = (1, 0)
         return {"action": action,  "values": values}
