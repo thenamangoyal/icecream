@@ -57,7 +57,7 @@ class IceCreamGame():
         self.player_scores = []
         self.next_player = -1
 
-        self.max_allowed_per_turn = 24
+        self.max_allowed_per_turn = constants.max_allowed_per_turn
         self.total_turn_per_player = -1
 
         self.__add_player(G1_Player, "Group 1")
@@ -397,9 +397,9 @@ class IceCreamContainer:
             num_flavors = constants.default_num_flavor_choice
         self.logger.debug("Generating ice cream with {} flavors".format(num_flavors))
         self.flavors = list(range(1, num_flavors+1))
-        self.l = 24  # cols
-        self.w = 15  # rows
-        self.h = 8  # height
+        self.l = constants.length  # cols
+        self.w = constants.width  # rows
+        self.h = constants.height  # height
         self.container = np.empty((self.l, self.w, self.h), dtype=np.int)
         self.curr_level = np.empty((self.l, self.w), dtype=np.int)
 
