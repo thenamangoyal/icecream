@@ -40,21 +40,24 @@ class Player:
     def scoop_value(flavor_preference, top_layer, curr_level, x, y):
         """Helper function: returns the value the player gets for a scoop at index x,y"""
         d = curr_level[x, y]
-        if d > 0:
-            units = 1
-            flav_total = len(flavor_preference) - flavor_preference.index(top_layer[x,y]) + 1
-            if curr_level[x+1, y] == d:
-                flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y]) + 1
-                units += 1
-            if curr_level[x, y+1] == d:
-                flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x,y+1]) + 1
-                units += 1
-            if curr_level[x+1, y+1] == d:
-                flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y+1]) + 1
-                units += 1
-            return (flav_total, (x, y), units)
-        else:
-            return (0, (x,y), 0)
+        try:
+            if d > 0:
+                units = 1
+                flav_total = len(flavor_preference) - flavor_preference.index(top_layer[x,y]) + 1
+                if curr_level[x+1, y] == d:
+                    flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y]) + 1
+                    units += 1
+                if curr_level[x, y+1] == d:
+                    flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x,y+1]) + 1
+                    units += 1
+                if curr_level[x+1, y+1] == d:
+                    flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y+1]) + 1
+                    units += 1
+                return (flav_total, (x, y), units)
+        except ValueError:
+            # No knowledge of player's preference for some value
+            pass
+        return (0, (x,y), 0)
 
     @staticmethod
     def score_available_scoops(flavor_preference, top_layer, curr_level):
@@ -126,20 +129,47 @@ class Player:
             values = (x, y)
         else:
             self.state['current_turn_served'] = 0
-            other_player_list = list(range(0, get_player_count()))
-            other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            next_player = Player.best_player_to_pass_to(player_idx, get_player_count(), top_layer, curr_level, get_served, get_flavors, get_turns_received())
             action = "pass"
             values = next_player
 
         # get knowledge of other players
-        pref_ranking = self.guess_player_pref_from_bowl(0, get_served(), get_flavors())  # [0] - favorite
-        added_flavors = self.diff_served(get_served(), self.state['current_served'])
+        # pref_ranking = self.guess_player_pref_from_bowl(0, get_served(), get_flavors())  # [0] - favorite
+        # added_flavors = self.diff_served(get_served(), self.state['current_served'])
 
         # update current served
         self.state['current_served'] = get_served()
 
         return {"action": action, "values": values}
+
+    @staticmethod
+    def best_player_to_pass_to(self_ix, n_players, top_layer, curr_level, get_served, get_flavors, turns_received):
+        # list of all players except ourself and those who have had more turns than the current min
+        players = []
+        min_received = np.amin(turns_received)
+        for i in range(n_players):
+            if i != self_ix and turns_received[i] == min_received:
+                players.append(i)
+
+        max_player = players[0]
+        max_score = 0
+        for player in players:
+            p_score = 0
+            player_pref = Player.guess_player_pref_from_bowl(player, get_served(), get_flavors())
+            # TODO (etm):
+            #   This is a crude approximation since some scoops will contain chunks of
+            #   other scoops. We need a better way to update the game state
+            p_queue = Player.score_available_scoops(player_pref, top_layer, curr_level)
+            for _ in range(24):
+                if len(p_queue) == 0:
+                    break
+                score, _, _ = p_queue.pop()
+                p_score += score
+            if p_score > max_score:
+                max_score = p_score
+                max_player = player
+
+        return max_player
 
     @staticmethod
     def guess_player_pref_from_bowl(player, current_served, flavors):
@@ -160,7 +190,7 @@ class Player:
         pref_ranking = [flavors_in_bowl[i] for i in amount_indices]
 
         # TODO what if some flavor(s) didn't appear in the bowl? Do we pad the ranking list at the end?
-        # pref_ranking += [-1] * (len(flavors) - len(pref_ranking))
+        pref_ranking += [0] * (len(flavors) - len(pref_ranking))
 
         return pref_ranking
 
