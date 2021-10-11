@@ -8,6 +8,7 @@ import copy
 import json
 import logging
 import argparse
+import constants
 from players.random_player import Player as Random_Player
 from players.g1_player import Player as G1_Player
 from players.g2_player import Player as G2_Player
@@ -36,8 +37,12 @@ class IceCreamGame():
         self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
 
-        self.rng = np.random.default_rng(2021)
-        self.ice_cream_container = IceCreamContainer(self.rng, self.logger)
+        self.rng = np.random.default_rng(args.seed)
+        if args.flavors == 0:
+            self.logger.debug("Using random number of flavors")
+            rand_num_flavors_idx = self.rng.integers(0, len(constants.num_flavor_choices))
+            args.flavors = constants.num_flavor_choices[rand_num_flavors_idx]
+        self.ice_cream_container = IceCreamContainer(self.rng, self.logger, num_flavors=args.flavors)
         self.l = self.ice_cream_container.get_length()
         self.w = self.ice_cream_container.get_width()
         self.h = self.ice_cream_container.get_height()
@@ -71,7 +76,7 @@ class IceCreamGame():
         self.served_this_turn = None
 
         if self.use_gui:
-            start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, None))
+            start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, args.automatic))
         else:
             self.logger.debug("No GUI flag specified")
             self.play_all()
@@ -275,7 +280,7 @@ class IceCreamApp(App):
         super(IceCreamApp, self).__init__(*args, static_file_path={'res': res_path})
 
     def main(self, *userdata):
-        self.ice_cream_game, _ = userdata
+        self.ice_cream_game, start_automatic = userdata
         self.ice_cream_game.set_app(self)
 
         mainContainer = gui.Container(style={'width': '100%', 'display': 'block', 'overflow': 'auto', 'text-align': 'center'})
@@ -287,7 +292,7 @@ class IceCreamApp(App):
         play_turn_bt = gui.Button("Play Turn")
         play_all_bt = gui.Button("Play All")
 
-        self.automatic_play = gui.CheckBoxLabel("Play Automatically")
+        self.automatic_play = gui.CheckBoxLabel("Play Automatically", checked=start_automatic)
         self.automatic_play.attributes["class"] = "checkbox"
 
         bt_hbox.append([play_step_bt, play_turn_bt, play_all_bt, self.automatic_play])
@@ -384,12 +389,13 @@ class IceCreamApp(App):
 
 
 class IceCreamContainer:
-    def __init__(self, rng, logger, num_flavors=12) -> None:
+    def __init__(self, rng, logger, num_flavors=constants.default_num_flavor_choice) -> None:
         self.rng = rng
         self.logger = logger
-        if num_flavors not in [2, 3, 4, 5, 6, 8, 9, 10, 12]:
+        if num_flavors not in constants.num_flavor_choices:
             self.logger.debug("Num flavors {} is not in allowed values, using 12 flavors".format(num_flavors))
-            num_flavors = 12
+            num_flavors = constants.default_num_flavor_choice
+        self.logger.debug("Generating ice cream with {} flavors".format(num_flavors))
         self.flavors = list(range(1, num_flavors+1))
         self.l = 24  # cols
         self.w = 15  # rows
@@ -461,7 +467,12 @@ class IceCreamContainer:
 
 
 if __name__ == '__main__':
+    num_flavor_choices = constants.num_flavor_choices
+    num_flavor_choices.append(0)
     parser = argparse.ArgumentParser()
+    parser.add_argument("--automatic", action="store_true", help="Start playing automatically in GUI mode")
+    parser.add_argument("--seed", "-s", type=int, default=2021, help="Seed used by random number generator")
+    parser.add_argument("--flavors", "-f", type=int, default=constants.default_num_flavor_choice, choices=num_flavor_choices, help="Number of flavors, specify 0 to use random number of flavors")
     parser.add_argument("--port", "-p", type=int, default=8080, help="Port to start")
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
