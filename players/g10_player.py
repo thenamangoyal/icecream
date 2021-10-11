@@ -1,4 +1,6 @@
 import math
+import random
+
 import numpy as np
 import copy
 import logging
@@ -59,7 +61,7 @@ class Player:
         for i in range(player_count):
             player_approximate_fav[i] = max(served[i], key=served[i].get) - 1
 
-        # adjusted to refect 0 index
+        # adjusted to reflect 0 index
         return player_approximate_fav
 
     def get_top_layer_flavour_count(self, top_layer: np.ndarray) -> List[int]:
@@ -105,13 +107,10 @@ class Player:
             next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             values = next_player'''
 
-            # calculate the current iteration based on our player index, since our player is called latest
-            turns_received = get_turns_received()
-            curr_iteration = turns_received[player_idx]
             not_next = 1
             #####available_players = [i for i in range(len(turns_received)) if turns_received[i]<curr_iteration]
 
-            # calculate the max amount of flavour visible on the top layer,
+            # calculate which flavour the top layer has the most,
             # store the value if less than 24 or store 24, since in one turn, player can only scoop 24
             top_layer_flavour_count = self.get_top_layer_flavour_count(top_layer)
             max_same_flavour = max(top_layer_flavour_count)
@@ -120,30 +119,30 @@ class Player:
             # get topmost preference of the player = estimated as the flavour having most units in player's bowl
             player_approximate_fav = self.get_player_approximate_fav(get_player_count(), get_served())
 
-            # use curr_iteration to check which players are available to pass
+            # check which players are available to pass to and record their index and favorite flavor
             available_player_fav = [(i, player_approximate_fav[i]) for i in range(len(player_approximate_fav)) if
-                                    turns_received[i] < curr_iteration]
+                                    get_turns_received()[i] < self.curr_turn]
+            self.logger.info("available player fav is {}".format(available_player_fav))
+            self.logger.info("length of available player fav is {}".format(len(available_player_fav)))
 
-            # randomly select a player if while logic doesn't work, given our player is not last in current iteration
-            if len(available_player_fav) > 0:
-                values, flavour = choice(available_player_fav)
-            else:  # pass to ourself in the next iteration
-                values = player_idx
-
-            # take a player for the available players and check if his flavour preference has 24 units or less depending on max_same_flavour, if yes pass to that player
-            while not_next and len(available_player_fav) > 0:
-                player, flavour = available_player_fav.pop()
-
-            # our top half favorite flavors (floor)
+             # our top half favorite flavors (floor)
             our_favs = self.flavor_preference[:(len(self.flavor_preference) // 2)]
+            self.logger.info("our top half favs are {}".format(our_favs))
 
             # calculate a list of no conflict, available players in hope to maximize our score first before we consider other members
             no_conflict_player_fav = []
             for player, flavour in available_player_fav:
                 if flavour not in our_favs:
                     no_conflict_player_fav.append((player, flavour))
-            self.logger.info("available player fav is ${}".format(available_player_fav))
-            self.logger.info("no conflict player fav is ${}".format(no_conflict_player_fav))
+            self.logger.info("no conflict player fav is {}".format(no_conflict_player_fav))
+            self.logger.info("length of no conflict player fav is {}".format(len(no_conflict_player_fav)))
+
+            # randomly select a player if while logic doesn't work
+            if len(available_player_fav) > 0:
+                values, flavour = choice(available_player_fav)
+            else:  # we are the last member to serve in this round, pass to a random member to start the next round
+                # don't want to pass to ourselves cause we should have almost exhausted our most favorite flavors on top level
+                values = random.randint(0, len(get_served()))
 
             # take a player for the available players and check if their favorite flavour has 24 units
             # or less depending on max_same_flavour, if yes pass to that player, try to maximize family members score if no conflict
