@@ -15,9 +15,12 @@ class Player:
             logger (logging.Logger): logger use this like logger.info("message")
         """
         self.flavor_preference = flavor_preference
+        print(self.flavor_preference)
         self.rng = rng
         self.logger = logger
         self.state = None
+        self.curr_num_scoop = 0
+
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
@@ -37,16 +40,45 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
-        x = self.rng.random()
-        if x < 0.95:
-            i = self.rng.integers(0, top_layer.shape[0]-1)
-            j = self.rng.integers(0, top_layer.shape[1]-1)
+
+        if self.curr_num_scoop < 6:
             action = "scoop"
-            values = (i, j)
+            values = self.get_max(top_layer, curr_level, self.flavor_preference)
+            self.curr_num_scoop += 1
         else:
             other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
             next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             action = "pass"
             values = next_player
+            self.curr_num_scoop = 0
+
         return {"action": action,  "values": values}
+
+
+    def get_level(self, coord, cur_level):
+        return cur_level[coord]
+
+
+    def get_max(self, top_layer, curr_level, preferences) -> Tuple[int, int]:
+
+        ret = (-1, -1)
+        max_score = -1
+        m, n = top_layer.shape
+        for i in range(m - 1):
+            for j in range(n - 1):
+                coords = [(i,j), (i+1,j), (i, j+1), (i+1, j+1)]
+                max_level = max([self.get_level(coord, curr_level) for coord in coords])
+                # get score for matching maximum level
+                total_score = 0
+                for coord in coords:
+                    if curr_level[coord[0], coord[1]] == max_level:
+                        if top_layer[coord] == -1:
+                            continue
+                        cell_score = len(preferences) - preferences.index(top_layer[coord]) + 1
+                        total_score += cell_score
+                if total_score > max_score:
+                    max_score = total_score
+                    ret = (i, j)
+
+        return ret
