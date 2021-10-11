@@ -37,7 +37,8 @@ class Player:
         flavor_cells = []
         for i_offset in range(2):
             for j_offset in range(2):
-                if curr_level[i + i_offset, j + j_offset] == max_level:
+                current_level = curr_level[i + i_offset, j + j_offset]
+                if current_level > 0 and current_level == max_level:
                     flavor_cells.append(top_layer[i + i_offset, j + j_offset])
         return self.calc_flavor_points(flavor_cells, flavor_preference)
 
