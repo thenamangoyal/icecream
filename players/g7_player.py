@@ -41,6 +41,7 @@ class Player:
         for i in range(len(flavor_preference)):
             self.flavor_points[flavor_preference[i]] = flavor_preference_len - i
 
+
     def get_score(self):
         """
         Calculate overall score of Player
@@ -55,11 +56,13 @@ class Player:
         Calculate of scoop based on flavor_points
         """
         total = 0
+        num_scooped = 0
         for row in scoop:
             for f in row:
                 if f != -1:
                     total += self.flavor_points[f]
-        return total
+                    num_scooped += 1
+        return total / num_scooped if num_scooped > 0 else total
 
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
@@ -93,5 +96,5 @@ class Player:
                     max_scoop_point = scoop_point
                     max_scoop_i, max_scoop_j = i, j
 
-
         return {"action": "scoop",  "values": (max_scoop_i, max_scoop_j)}
+
