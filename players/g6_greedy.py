@@ -18,7 +18,7 @@ def get_icecream(self,top_layer,curr_level,level,i,j):
         return 0,0
     for x in range(i,i+2):
         for y in range(j,j+2):
-            if curr_level[x][y]==level:
+            if curr_level[x][y]==level and top_layer[i][j] in self.flavor_preference:
                 amount+=1
                 value+=(len(self.flavor_preference)+1-self.flavor_preference.index(top_layer[i][j]))
     return value, amount
