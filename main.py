@@ -23,7 +23,7 @@ from players.g10_player import Player as G10_Player
 root_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-class IceCreamGame(App):
+class IceCreamGame():
     def __init__(self, args):
         self.args = args
         self.use_gui = not(args.no_gui)
