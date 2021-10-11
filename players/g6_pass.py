@@ -10,7 +10,10 @@ def NormalizeData(data):
 
 def passToMatch(self, top_layer, served, turns_received):
     unique, counts = np.unique(top_layer, return_counts=True)
-    normalized_top_falvors = NormalizeData(np.array(counts))
+    if -1 in top_layer:
+        unique = np.delete(unique, 0)
+        counts = np.delete(counts, 0)
+    normalized_top_falvors = NormalizeData(counts)
 
     normalized_served = []
     distances = []
