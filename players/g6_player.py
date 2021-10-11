@@ -46,14 +46,14 @@ class Player:
 
         if (self.state["count"]<24):
             pos,amount = self.greedy(self, top_layer, curr_level, 24-self.state["count"])
-            action = "scoop"
-            values = pos
-            self.state["count"]+=amount
-        else:
+            if pos!=(-1,-1):
+                action = "scoop"
+                values = pos
+                self.state["count"]+=amount
+        if action=="no action":
             self.state["count"] = 0
             pass_idx = passToMatch(self, top_layer, get_served(), get_turns_received())
             print("chosen group: ", pass_idx)
-
             action = "pass"
             values = pass_idx
 
