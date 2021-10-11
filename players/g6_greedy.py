@@ -23,7 +23,7 @@ def get_icecream(self,top_layer,curr_level,level,i,j):
                 value+=(len(self.flavor_preference)+1-self.flavor_preference.index(top_layer[i][j]))
     return value, amount
 def greedy(self, top_layer, curr_level,maxAmount):
-    bestValue = -1.0 # best mean value of ice-cream
+    bestValue = 0.0 # best mean value of ice-cream
     bestPos=(-1,-1) # position of bestValue
     bestAmount=0 # amount of ice-cream of bestValue
     for i in range(23):
