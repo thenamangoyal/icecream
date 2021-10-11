@@ -26,6 +26,7 @@ def passToMatch(self, top_layer, served, turns_received):
     max_turn =  max(turns_received)
     while turns_received[min_idx] == max_turn and max_turn!=min(turns_received):
         cut = cut[:idx]+cut[idx+1:]
+        if len(cut) == 0: break
         min_dist = min(cut)
         min_idx = distances.index(min_dist)
         idx = cut.index(min_dist)
