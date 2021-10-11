@@ -33,16 +33,22 @@ class Player:
                 # like when 20<state<24, we can spoon 0 if the total 4 can give us greatest score.
 
                 highest_level = max(spoon_level)
-                if highest_level <= 0: # zero will get no score and -1 will get terminated, so we skip
+                if highest_level < 0: # zero will get no score and -1 will get terminated, so we skip
                     continue
                 curr_flavors = [top_layer[i,j],top_layer[i+1,j],top_layer[i,j+1],top_layer[i+1,j+1]]
                 curr_score = 0
+                cell_counter = 0
                 for index,flavor in enumerate(curr_flavors):
                     if spoon_level[index] == highest_level:
+<<<<<<< HEAD
+                        cell_counter+=1
+=======
                         # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
+>>>>>>> c600d35b8334504f0590e00945fd478a89590895
                         curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
-                if curr_score>score:
-                    score=curr_score
+                unit_score = curr_score/cell_counter
+                if unit_score>score:
+                    score=unit_score
                     max_i=i
                     max_j=j
         print(score)
