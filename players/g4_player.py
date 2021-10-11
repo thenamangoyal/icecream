@@ -23,7 +23,6 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = {
-            'others_pref': [],
             'current_served': None
         }
 
