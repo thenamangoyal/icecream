@@ -40,11 +40,8 @@ class Player:
                 cell_counter = 0
                 for index,flavor in enumerate(curr_flavors):
                     if spoon_level[index] == highest_level:
-<<<<<<< HEAD
                         cell_counter+=1
-=======
-                        # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
->>>>>>> c600d35b8334504f0590e00945fd478a89590895
+                       # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
                         curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
                 unit_score = curr_score/cell_counter
                 if unit_score>score:
