@@ -4,22 +4,6 @@ import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
 
-def get_scoop(i,j,top_layer,curr_level):
-    """
-    Gets a 2x2 scoop from (i,j) to (i+1,j+1), 
-    if a cell doesn't have a flavor on top_layer, sets it to -1
-    """
-    levels = curr_level[i:i+2][:,[j,j+2]]
-    top_level = np.amax(levels)
-
-    scoop = top_layer[i:i+2][:,[j,j+2]]
-    for x in range(2):
-        for y in range(2):
-            if curr_level[x+i][y+j] != top_level:
-                scoop[x][y] = -1
-        
-    return scoop
-
 
 class Player:
     def __init__(self, flavor_preference: List[int], rng: np.random.Generator, logger: logging.Logger) -> None:
@@ -35,21 +19,17 @@ class Player:
         self.logger = logger
         self.state = None
         self.flavor_points = {}
+        self.average = (max(flavor_preference) + min(flavor_preference)) / 2
+        self.discount = 0.9
+        self.level_coef = 1
 
         flavor_preference_len = len(flavor_preference)
 
         for i in range(len(flavor_preference)):
             self.flavor_points[flavor_preference[i]] = flavor_preference_len - i
 
+        self.flavor_points[-1] = self.average
 
-    def get_score(self):
-        """
-        Calculate overall score of Player
-        """
-        total = 0
-        for f in self.state:
-            total += self.flavor_points[f]
-        return total
 
     def calculate_score_scoop(self, scoop):
         """
@@ -57,12 +37,40 @@ class Player:
         """
         total = 0
         num_scooped = 0
-        for row in scoop:
-            for f in row:
-                if f != -1:
-                    total += self.flavor_points[f]
+        coef = self.level_coef
+
+        for level in scoop:
+            if len(level) > 0:
+                for f in level:
+                    total += self.flavor_points[f] * coef
                     num_scooped += 1
+                coef *= self.discount
+        
         return total / num_scooped if num_scooped > 0 else total
+
+    def get_scoop(self,i,j,top_layer,curr_level):
+        """
+        Gets a 2x2 scoop from (i,j) to (i+1,j+1), from maximum level to minimum level
+        returns list of list (e.g [[flavors on level 8], [flavors on level 7], ...])
+        if there are cells that are unknown, replaces them with average value
+        """
+        levels = []
+
+        scoop = curr_level[i:i+2][:,[j,j+2]]
+        max_level = np.amax(scoop)
+        min_level = np.amin(scoop)
+
+        for level in range(max_level,min_level-1,-1):
+            l = []
+            for x in range(2):
+                for y in range(2):
+                    if curr_level[i+x][j+y] == level:
+                        l.append(top_layer[i+x][j+y])
+                    elif curr_level[i+x][j+y] > level:
+                        l.append(-1)
+            levels.append(l)
+            
+        return levels
 
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
@@ -89,7 +97,7 @@ class Player:
 
         for i in range(len(top_layer) - 2):
             for j in range(len(top_layer[i]) - 2):
-                scoop = get_scoop(i,j,top_layer,curr_level)
+                scoop = self.get_scoop(i,j,top_layer,curr_level)
                 scoop_point = self.calculate_score_scoop(scoop)
 
                 if scoop_point > max_scoop_point:
