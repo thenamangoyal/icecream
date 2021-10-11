@@ -23,6 +23,8 @@ class Player:
         score = 0
         max_i = -1
         max_j = -1
+
+        # Loop through every possible 2x2 square on the grid
         for i in range(top_layer.shape[0]-1):
             for j in range(top_layer.shape[1]-1):
                 spoon_level = [curr_level[i,j],curr_level[i+1,j],curr_level[i,j+1],curr_level[i+1,j+1]]
@@ -30,7 +32,6 @@ class Player:
                 # unless it is the last step, we can use state to optimize.
                 # like when 20<state<24, we can spoon 0 if the total 4 can give us greatest score.
 
-                ## the part I will modify
                 highest_level = max(spoon_level)
                 if highest_level <= 0: # zero will get no score and -1 will get terminated, so we skip
                     continue
@@ -38,6 +39,7 @@ class Player:
                 curr_score = 0
                 for index,flavor in enumerate(curr_flavors):
                     if spoon_level[index] == highest_level:
+                        # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
                         curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
                 if curr_score>score:
                     score=curr_score
