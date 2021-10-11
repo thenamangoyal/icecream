@@ -116,9 +116,11 @@ class IceCreamGame():
             for player_idx, score in enumerate(self.player_scores):
                 self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
             group_score = np.mean(self.player_scores)
-            self.logger.debug("Average group score: {}".format(group_score))
+            self.logger.debug("Average group score for all players: {}".format(group_score))
             for player_idx, score in enumerate(self.player_scores):
-                self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, group_score])))
+                other_player_scores = np.copy(self.player_scores)
+                other_player_scores = np.delete(other_player_scores, player_idx)
+                self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, np.mean(other_player_scores)])))
 
     def __turn_end(self, new_next_player=None):
         self.processing_turn = False
