@@ -14,7 +14,7 @@ def get_level(self, curr_level,i,j):
 def get_icecream(self,top_layer,curr_level,level,i,j):
     value = 0
     amount = 0
-    if level==0:
+    if level<=0:
         return 0,0
     for x in range(i,i+2):
         for y in range(j,j+2):
