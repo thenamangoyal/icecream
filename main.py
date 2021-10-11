@@ -74,6 +74,7 @@ class IceCreamGame():
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
         self.served_this_turn = None
+        self.end_message_printed = False
 
         if self.use_gui:
             start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, args.automatic))
@@ -107,15 +108,17 @@ class IceCreamGame():
         return valid_players[self.rng.integers(0, valid_players.size)][0]
 
     def __game_end(self):
-        self.__log("Game ended as each player played {} turns".format(self.total_turn_per_player))
-        for player_idx, score in enumerate(self.player_scores):
-            self.logger.debug("{} turns: {}".format(self.player_names[player_idx], self.turns_received[player_idx]))
-        for player_idx, score in enumerate(self.player_scores):
-            self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
-        group_score = np.mean(self.player_scores)
-        self.logger.debug("Average group score: {}".format(group_score))
-        for player_idx, score in enumerate(self.player_scores):
-            self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, group_score])))
+        if not self.end_message_printed and self.is_game_ended():
+            self.end_message_printed = True
+            self.__log("Game ended as each player played {} turns".format(self.total_turn_per_player))
+            for player_idx, score in enumerate(self.player_scores):
+                self.logger.debug("{} turns: {}".format(self.player_names[player_idx], self.turns_received[player_idx]))
+            for player_idx, score in enumerate(self.player_scores):
+                self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
+            group_score = np.mean(self.player_scores)
+            self.logger.debug("Average group score: {}".format(group_score))
+            for player_idx, score in enumerate(self.player_scores):
+                self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, group_score])))
 
     def __turn_end(self, new_next_player=None):
         self.processing_turn = False
@@ -147,18 +150,22 @@ class IceCreamGame():
         else:
             self.logger.debug("No GUI flag specified, skipping setting app")
 
+    def is_game_ended(self):
+        return np.amin(self.turns_received) >= self.total_turn_per_player
+
     def play_all(self):
-        self.__log("Playing all turns")
-        while np.amin(self.turns_received) < self.total_turn_per_player:
-            self.play(run_stepwise=False, do_update=False)
-        if self.use_gui:
-            self.ice_cream_app.update_score_table()
-            self.ice_cream_app.update_table()
-        self.__game_end()
+        if not self.is_game_ended():
+            self.__log("Playing all turns")
+            while not self.is_game_ended():
+                self.play(run_stepwise=False, do_update=False)
+            if self.use_gui:
+                self.ice_cream_app.update_score_table()
+                self.ice_cream_app.update_table()
+            self.__game_end()
 
     def play(self, run_stepwise=False, do_update=True):
         if not self.processing_turn:
-            if np.amin(self.turns_received) < self.total_turn_per_player:
+            if not self.is_game_ended():
                 if np.amin(self.turns_received) < self.turns_received[self.next_player]:
                     self.logger.debug("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[self.next_player]))
                     self.next_player = self.__assign_next_player()
@@ -335,9 +342,11 @@ class IceCreamApp(App):
         return mainContainer
 
     def idle(self):
-        if self.automatic_play.get_value():
-            self.ice_cream_game.play(run_stepwise=True)
-
+        if not self.ice_cream_game.is_game_ended():
+            if self.automatic_play.get_value():
+                self.ice_cream_game.play(run_stepwise=True)
+        else:
+            self.automatic_play.set_value(False)
 
     def update_score_table(self):
         for player_idx, score in enumerate(self.ice_cream_game.player_scores):
