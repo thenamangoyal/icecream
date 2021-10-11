@@ -23,35 +23,50 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = {
-            'current_served': None
+            'current_served': None,
+            # Number of scoops served to ourselves in the current turn
+            'current_turn_served': 0
         }
 
-    def valid_scoop(self, curr_level, x, y):
+    @staticmethod
+    def valid_scoop(curr_level, x, y):
         """Helper function: returns whether a scoop at an index x,y is valid or not"""
         d = curr_level[x,y]
         if curr_level[x+1,y] <= d and curr_level[x,y+1] <= d and curr_level[x+1,y+1] <= d:
             return True
         return False
 
-    def scoop_value(self, top_layer, curr_level, x, y):
+    @staticmethod
+    def scoop_value(flavor_preference, top_layer, curr_level, x, y):
         """Helper function: returns the value the player gets for a scoop at index x,y"""
         d = curr_level[x, y]
         if d > 0:
             units = 1
-            flav_total = len(self.flavor_preference) - self.flavor_preference.index(top_layer[x,y]) + 1
+            flav_total = len(flavor_preference) - flavor_preference.index(top_layer[x,y]) + 1
             if curr_level[x+1, y] == d:
-                flav_total += len(self.flavor_preference) - self.flavor_preference.index(top_layer[x+1,y]) + 1
+                flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y]) + 1
                 units += 1
             if curr_level[x, y+1] == d:
-                flav_total += len(self.flavor_preference) - self.flavor_preference.index(top_layer[x,y+1]) + 1
+                flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x,y+1]) + 1
                 units += 1
             if curr_level[x+1, y+1] == d:
-                flav_total += len(self.flavor_preference) - self.flavor_preference.index(top_layer[x+1,y+1]) + 1
+                flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y+1]) + 1
                 units += 1
             return (flav_total, (x, y), units)
         else:
             return (0, (x,y), 0)
 
+    @staticmethod
+    def score_available_scoops(flavor_preference, top_layer, curr_level):
+        p_queue = []
+        # Subtract one from length since 2x2 "spoon" must remain in container
+        for x in range(0, top_layer.shape[0]-1):
+            for y in range(0, top_layer.shape[1]-1):
+                if Player.valid_scoop(curr_level, x, y):
+                    p_queue.append(Player.scoop_value(flavor_preference, top_layer, curr_level, x, y))
+        # TODO (etm): If we care, we can use an actual heap / priority queue
+        p_queue.sort()
+        return p_queue
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
           get_flavors: Callable[[], List[int]],
@@ -94,30 +109,23 @@ class Player:
         Returns:
             Dict[str, Union[Tuple[int],int]]: Return a dictionary specifying
             what action to take in the next step.
-            
+
             2 possible return values
             {"action": "scoop",  "values" : (i,j)}
             stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
 
             {"action": "pass", "values" : i} pass to next player with index i
         """
-        if self.state is None:
-            self.state = 0
         # build priority queue
-        p_queue = []
-        for x in range(0, top_layer.shape[0]-1):
-            for y in range(0, top_layer.shape[1]-1):
-                if self.valid_scoop(curr_level, x, y):
-                    p_queue.append(self.scoop_value(top_layer, curr_level, x, y))
-        p_queue.sort(reverse=True)
+        p_queue = self.score_available_scoops(self.flavor_preference, top_layer, curr_level)
         # if there is still more ice-cream to take, make a scoop
-        if self.state < 24:
+        if self.state['current_turn_served'] < 24:
             action = "scoop"
-            value, (x, y), units = p_queue.pop(0)
-            self.state += units
+            value, (x, y), units = p_queue.pop()
+            self.state['current_turn_served'] += units
             values = (x, y)
         else:
-            self.state = 0
+            self.state['current_turn_served'] = 0
             other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
             next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
