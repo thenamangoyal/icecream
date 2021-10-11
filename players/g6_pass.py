@@ -34,7 +34,7 @@ def passToMatch(self, top_layer, served, turns_received):
         min_idx = distances.index(min_dist)
         idx = cut.index(min_dist)
     
-    if min(cut) == max(cut):
+    if len(cut) > 1 and min(cut) == max(cut):
         indices = [i for i, x in enumerate(distances) if x == min(cut)]
         min_idx = indices[self.rng.integers(0, len(cut))]
 
