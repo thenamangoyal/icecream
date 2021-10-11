@@ -41,7 +41,7 @@ class Player:
         """Helper function: returns the value the player gets for a scoop at index x,y"""
         d = curr_level[x, y]
         try:
-            if d > 0:
+            if d >= 0:
                 units = 1
                 flav_total = len(flavor_preference) - flavor_preference.index(top_layer[x,y]) + 1
                 if curr_level[x+1, y] == d:
