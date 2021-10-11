@@ -4,6 +4,7 @@ import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
 from .g6_greedy import greedy,get_level,get_icecream
+from .g6_pass import passToMatch
 
 
 class Player:
@@ -42,6 +43,7 @@ class Player:
         """
         action = "no action"
         values = None
+
         if (self.state["count"]<24):
             pos,amount = self.greedy(self, top_layer, curr_level, 24-self.state["count"])
             action = "scoop"
@@ -49,9 +51,11 @@ class Player:
             self.state["count"]+=amount
         else:
             self.state["count"] = 0
-            #self.passNextPlayer(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors:
-            #Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[
-            #    [], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]])
+            pass_idx = passToMatch(self, top_layer, get_served(), get_turns_received())
+            print("chosen group: ", pass_idx)
+
+            action = "pass"
+            values = pass_idx
 
         return {"action": action,  "values": values}
 
