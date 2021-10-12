@@ -6,8 +6,10 @@ import remi.gui as gui
 from remi import start, App
 import copy
 import json
+import traceback
 import logging
 import argparse
+import constants
 from players.random_player import Player as Random_Player
 from players.g1_player import Player as G1_Player
 from players.g2_player import Player as G2_Player
@@ -23,7 +25,7 @@ from players.g10_player import Player as G10_Player
 root_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-class IceCreamGame(App):
+class IceCreamGame():
     def __init__(self, args):
         self.args = args
         self.use_gui = not(args.no_gui)
@@ -35,9 +37,18 @@ class IceCreamGame(App):
         fh.setLevel(logging.DEBUG)
         self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
-
-        self.rng = np.random.default_rng(2021)
-        self.ice_cream_container = IceCreamContainer(self.rng, self.logger)
+        
+        if args.seed == 0:
+            args.seed = None
+            self.logger.debug("Initialise random number generator with no seed")
+        else:
+            self.logger.debug("Initialise random number generator with {} seed".format(args.seed))
+        self.rng = np.random.default_rng(args.seed)
+        if args.flavors == 0:
+            self.logger.debug("Using random number of flavors")
+            rand_num_flavors_idx = self.rng.integers(0, len(constants.num_flavor_choices))
+            args.flavors = constants.num_flavor_choices[rand_num_flavors_idx]
+        self.ice_cream_container = IceCreamContainer(self.rng, self.logger, num_flavors=args.flavors)
         self.l = self.ice_cream_container.get_length()
         self.w = self.ice_cream_container.get_width()
         self.h = self.ice_cream_container.get_height()
@@ -52,7 +63,7 @@ class IceCreamGame(App):
         self.player_scores = []
         self.next_player = -1
 
-        self.max_allowed_per_turn = 24
+        self.max_allowed_per_turn = constants.max_allowed_per_turn
         self.total_turn_per_player = -1
 
         self.__add_player(G1_Player, "Group 1")
@@ -69,9 +80,10 @@ class IceCreamGame(App):
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
         self.served_this_turn = None
+        self.end_message_printed = False
 
         if self.use_gui:
-            start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, None))
+            start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, args.automatic))
         else:
             self.logger.debug("No GUI flag specified")
             self.play_all()
@@ -84,6 +96,7 @@ class IceCreamGame(App):
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
             player_preference = self.rng.permutation(self.flavors).tolist()
+            self.logger.debug("Adding player {} with preference {}".format(player_name, player_preference))
             player = player_class(player_preference, self.rng, self.logger)
             self.players.append(player)
             self.player_preferences.append(player_preference)
@@ -102,15 +115,19 @@ class IceCreamGame(App):
         return valid_players[self.rng.integers(0, valid_players.size)][0]
 
     def __game_end(self):
-        self.__log("Game ended as each player played {} turns".format(self.total_turn_per_player))
-        for player_idx, score in enumerate(self.player_scores):
-            self.logger.debug("{} turns: {}".format(self.player_names[player_idx], self.turns_received[player_idx]))
-        for player_idx, score in enumerate(self.player_scores):
-            self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
-        group_score = np.mean(self.player_scores)
-        self.logger.debug("Average group score: {}".format(group_score))
-        for player_idx, score in enumerate(self.player_scores):
-            self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, group_score])))
+        if not self.end_message_printed and self.is_game_ended():
+            self.end_message_printed = True
+            self.__log("Game ended as each player played {} turns".format(self.total_turn_per_player))
+            for player_idx, score in enumerate(self.player_scores):
+                self.logger.debug("{} turns: {}".format(self.player_names[player_idx], self.turns_received[player_idx]))
+            for player_idx, score in enumerate(self.player_scores):
+                self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
+            group_score = np.mean(self.player_scores)
+            self.logger.debug("Average group score for all players: {}".format(group_score))
+            for player_idx, score in enumerate(self.player_scores):
+                other_player_scores = np.copy(self.player_scores)
+                other_player_scores = np.delete(other_player_scores, player_idx)
+                self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, np.mean(other_player_scores)])))
 
     def __turn_end(self, new_next_player=None):
         self.processing_turn = False
@@ -142,18 +159,22 @@ class IceCreamGame(App):
         else:
             self.logger.debug("No GUI flag specified, skipping setting app")
 
+    def is_game_ended(self):
+        return np.amin(self.turns_received) >= self.total_turn_per_player
+
     def play_all(self):
-        self.__log("Playing all turns")
-        while np.amin(self.turns_received) < self.total_turn_per_player:
-            self.play(run_stepwise=False, do_update=False)
-        if self.use_gui:
-            self.ice_cream_app.update_score_table()
-            self.ice_cream_app.update_table()
-        self.__game_end()
+        if not self.is_game_ended():
+            self.__log("Playing all turns")
+            while not self.is_game_ended():
+                self.play(run_stepwise=False, do_update=False)
+            if self.use_gui:
+                self.ice_cream_app.update_score_table()
+                self.ice_cream_app.update_table()
+            self.__game_end()
 
     def play(self, run_stepwise=False, do_update=True):
         if not self.processing_turn:
-            if np.amin(self.turns_received) < self.total_turn_per_player:
+            if not self.is_game_ended():
                 if np.amin(self.turns_received) < self.turns_received[self.next_player]:
                     self.logger.debug("Can't pass to the {}, as other player(s) with less helpings exist".format(self.player_names[self.next_player]))
                     self.next_player = self.__assign_next_player()
@@ -204,7 +225,11 @@ class IceCreamGame(App):
             player = self.players[player_idx]
             top_layer = self.ice_cream_container.get_top_layer()
             curr_level = self.ice_cream_container.get_curr_level()
-            action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
+            try:
+                action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
+            except Exception as e:
+                self.logger.error(e, exc_info=True)
+                action_values_dict = dict()
             is_valid_action = self.__check_action(action_values_dict)
             if is_valid_action:
                 action = action_values_dict["action"]
@@ -216,10 +241,10 @@ class IceCreamGame(App):
                 if action == "scoop":
                     i, j = values
                     if not(i >= 0 and i < self.l-1 and j >= 0 and j < self.w-1):
-                        self.logger.debug("Given out of bounds scoop position {}".format((i, j)))
+                        self.logger.debug("Received out of bounds scoop position {}".format((i, j)))
                         pass_next = True
                     elif len(self.ice_cream_container.scoop(i, j, dry_run=True)) <= 0:
-                        self.logger.debug("Given empty scooping position, passing to next player")
+                        self.logger.debug("Received empty scooping position, passing to next player")
                         pass_next = True
                     elif len(self.ice_cream_container.scoop(i, j, dry_run=True)) + len(self.served_this_turn) <= self.max_allowed_per_turn:
                         scooped_items = self.ice_cream_container.scoop(i, j, dry_run=False)
@@ -227,6 +252,7 @@ class IceCreamGame(App):
                             self.served[player_idx][flavor] += 1
                             self.player_scores[player_idx] += len(self.flavors) - self.__get_flavor_preference(player_idx, flavor) + 1
 
+                        self.logger.debug("Scooped at {}: {}".format((i,j), scooped_items))
                         self.served_this_turn.extend(scooped_items)
                     else:
                         self.logger.debug("Scooping limit exceeded, passing to next player")
@@ -240,7 +266,7 @@ class IceCreamGame(App):
                         next_player = values
                     pass_next = True
             else:
-                self.logger.debug("Given invalid action_value_dict.")
+                self.logger.debug("Received invalid action from player {}, passing to next player.".format(self.player_names[player_idx]))
                 pass_next = True
 
             if do_update and self.use_gui:
@@ -268,6 +294,9 @@ class IceCreamGame(App):
     def get_turns_received(self):
         return np.copy(self.turns_received)
 
+    def get_current_player(self):
+        return self.player_names[self.next_player]
+
 
 class IceCreamApp(App):
     def __init__(self, *args):
@@ -275,7 +304,7 @@ class IceCreamApp(App):
         super(IceCreamApp, self).__init__(*args, static_file_path={'res': res_path})
 
     def main(self, *userdata):
-        self.ice_cream_game, _ = userdata
+        self.ice_cream_game, start_automatic = userdata
         self.ice_cream_game.set_app(self)
 
         mainContainer = gui.Container(style={'width': '100%', 'display': 'block', 'overflow': 'auto', 'text-align': 'center'})
@@ -287,7 +316,7 @@ class IceCreamApp(App):
         play_turn_bt = gui.Button("Play Turn")
         play_all_bt = gui.Button("Play All")
 
-        self.automatic_play = gui.CheckBoxLabel("Play Automatically")
+        self.automatic_play = gui.CheckBoxLabel("Play Automatically", checked=start_automatic)
         self.automatic_play.attributes["class"] = "checkbox"
 
         bt_hbox.append([play_step_bt, play_turn_bt, play_all_bt, self.automatic_play])
@@ -297,6 +326,8 @@ class IceCreamApp(App):
         play_all_bt.onclick.do(self.play_all_bt_press)
         mainContainer.append(bt_hbox)
         self.label = gui.Label("Ice Cream: Ready to start")
+        self.ice_cream_game.logger.debug("First turn {}".format(self.ice_cream_game.get_current_player()))
+        self.label_set_text("First turn {}".format(self.ice_cream_game.get_current_player()))
         mainContainer.append(self.label)
 
         self.score_table = gui.TableWidget(2, len(self.ice_cream_game.players)+1, style={'margin': '5px auto'})
@@ -307,7 +338,7 @@ class IceCreamApp(App):
             self.score_table.item_at(1, player_idx).set_style("padding:0 10px")
         mainContainer.append(self.score_table)
 
-        paths = ["gray.png", "yellow.png", "green.png", "red.png", "blue.png", "cream.png", "pink.png", "orange.png", "brown.png", "cyan.png", "almond.png", "strawberry.png"]
+        paths = ["yellow.png", "brown.png", "blue.png", "gray.png", "green.png", "pink.png", "red.png", "orange.png", "cyan.png",  "cream.png", "almond.png", "strawberry.png"]
         self.flavor_to_path = {k: v for k, v in zip(self.ice_cream_game.flavors, paths)}
         self.flavor_to_path[-1] = "cross.png"
 
@@ -330,9 +361,11 @@ class IceCreamApp(App):
         return mainContainer
 
     def idle(self):
-        if self.automatic_play.get_value():
-            self.ice_cream_game.play(run_stepwise=True)
-
+        if not self.ice_cream_game.is_game_ended():
+            if self.automatic_play.get_value():
+                self.ice_cream_game.play(run_stepwise=True)
+        else:
+            self.automatic_play.set_value(False)
 
     def update_score_table(self):
         for player_idx, score in enumerate(self.ice_cream_game.player_scores):
@@ -384,16 +417,17 @@ class IceCreamApp(App):
 
 
 class IceCreamContainer:
-    def __init__(self, rng, logger, num_flavors=12) -> None:
+    def __init__(self, rng, logger, num_flavors=constants.default_num_flavor_choice) -> None:
         self.rng = rng
         self.logger = logger
-        if num_flavors not in [2, 3, 4, 5, 6, 8, 9, 10, 12]:
-            self.logger.debug("Num flavors {} is not in allowed values, using 12 flavors".format(num_flavors))
-            num_flavors = 12
+        if num_flavors not in constants.num_flavor_choices:
+            self.logger.debug("Num flavors {} is not in allowed values, using {} flavors".format(num_flavors, constants.default_num_flavor_choice))
+            num_flavors = constants.default_num_flavor_choice
+        self.logger.debug("Generating ice cream with {} flavors".format(num_flavors))
         self.flavors = list(range(1, num_flavors+1))
-        self.l = 24  # cols
-        self.w = 15  # rows
-        self.h = 8  # height
+        self.l = constants.length  # cols
+        self.w = constants.width  # rows
+        self.h = constants.height  # height
         self.container = np.empty((self.l, self.w, self.h), dtype=np.int)
         self.curr_level = np.empty((self.l, self.w), dtype=np.int)
 
@@ -461,7 +495,12 @@ class IceCreamContainer:
 
 
 if __name__ == '__main__':
+    num_flavor_choices = constants.num_flavor_choices
+    num_flavor_choices.append(0)
     parser = argparse.ArgumentParser()
+    parser.add_argument("--automatic", action="store_true", help="Start playing automatically in GUI mode")
+    parser.add_argument("--seed", "-s", type=int, default=2021, help="Seed used by random number generator, specify 0 to use no seed and have different random behavior on each launch")
+    parser.add_argument("--flavors", "-f", type=int, default=constants.default_num_flavor_choice, choices=num_flavor_choices, help="Number of flavors, specify 0 to use random number of flavors")
     parser.add_argument("--port", "-p", type=int, default=8080, help="Port to start")
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
