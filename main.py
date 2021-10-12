@@ -6,6 +6,7 @@ import remi.gui as gui
 from remi import start, App
 import copy
 import json
+import traceback
 import logging
 import argparse
 import constants
@@ -224,7 +225,11 @@ class IceCreamGame():
             player = self.players[player_idx]
             top_layer = self.ice_cream_container.get_top_layer()
             curr_level = self.ice_cream_container.get_curr_level()
-            action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
+            try:
+                action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
+            except Exception as e:
+                self.logger.error(e, exc_info=True)
+                action_values_dict = dict()
             is_valid_action = self.__check_action(action_values_dict)
             if is_valid_action:
                 action = action_values_dict["action"]
@@ -236,10 +241,10 @@ class IceCreamGame():
                 if action == "scoop":
                     i, j = values
                     if not(i >= 0 and i < self.l-1 and j >= 0 and j < self.w-1):
-                        self.logger.debug("Given out of bounds scoop position {}".format((i, j)))
+                        self.logger.debug("Received out of bounds scoop position {}".format((i, j)))
                         pass_next = True
                     elif len(self.ice_cream_container.scoop(i, j, dry_run=True)) <= 0:
-                        self.logger.debug("Given empty scooping position, passing to next player")
+                        self.logger.debug("Received empty scooping position, passing to next player")
                         pass_next = True
                     elif len(self.ice_cream_container.scoop(i, j, dry_run=True)) + len(self.served_this_turn) <= self.max_allowed_per_turn:
                         scooped_items = self.ice_cream_container.scoop(i, j, dry_run=False)
@@ -261,7 +266,7 @@ class IceCreamGame():
                         next_player = values
                     pass_next = True
             else:
-                self.logger.debug("Given invalid action_value_dict.")
+                self.logger.debug("Received invalid action from player {}, passing to next player.".format(self.player_names[player_idx]))
                 pass_next = True
 
             if do_update and self.use_gui:
