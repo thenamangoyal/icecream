@@ -90,6 +90,7 @@ class IceCreamGame():
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
             player_preference = self.rng.permutation(self.flavors).tolist()
+            self.logger.debug("Adding player {} with preference {}".format(player_name, player_preference))
             player = player_class(player_preference, self.rng, self.logger)
             self.players.append(player)
             self.player_preferences.append(player_preference)
@@ -241,6 +242,7 @@ class IceCreamGame():
                             self.served[player_idx][flavor] += 1
                             self.player_scores[player_idx] += len(self.flavors) - self.__get_flavor_preference(player_idx, flavor) + 1
 
+                        self.logger.debug("Scooped at {}: {}".format((i,j), scooped_items))
                         self.served_this_turn.extend(scooped_items)
                     else:
                         self.logger.debug("Scooping limit exceeded, passing to next player")
