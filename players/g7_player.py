@@ -28,7 +28,8 @@ class Player:
         for i in range(len(flavor_preference)):
             self.flavor_points[flavor_preference[i]] = flavor_preference_len - i
 
-        self.flavor_points[-1] = self.average
+        self.flavor_points[-1] = 0
+        self.flavor_points[-2] = self.average
 
 
     def calculate_score_scoop(self, scoop):
@@ -56,9 +57,9 @@ class Player:
         """
         levels = []
 
-        scoop = curr_level[i:i+2][:,[j,j+2]]
+        scoop = [[curr_level[i][j],curr_level[i][j+1]],[curr_level[i+1][j],curr_level[i+1][j+1]]]
         max_level = np.amax(scoop)
-        min_level = np.amin(scoop)
+        min_level = max(np.amin(scoop),0)
 
         for level in range(max_level,min_level-1,-1):
             l = []
@@ -67,7 +68,7 @@ class Player:
                     if curr_level[i+x][j+y] == level:
                         l.append(top_layer[i+x][j+y])
                     elif curr_level[i+x][j+y] > level:
-                        l.append(-1)
+                        l.append(-2)
             levels.append(l)
             
         return levels
@@ -95,8 +96,8 @@ class Player:
         max_scoop_i, max_scoop_j = -1, -1
         max_scoop_point = -1
 
-        for i in range(len(top_layer) - 2):
-            for j in range(len(top_layer[i]) - 2):
+        for i in range(len(top_layer) - 1):
+            for j in range(len(top_layer[i]) - 1):
                 scoop = self.get_scoop(i,j,top_layer,curr_level)
                 scoop_point = self.calculate_score_scoop(scoop)
 
