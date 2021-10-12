@@ -3,6 +3,7 @@ import numpy as np
 import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
+from operator import itemgetter
 
 
 class Player:
@@ -70,29 +71,40 @@ class Player:
             values, units_taken, _ = self.get_max(top_layer, curr_level, self.flavor_preference, self.curr_units_taken)
             self.curr_units_taken += units_taken
         else:
-            # turns_num = get_turns_received()
-            # max_turn = max(turns_num)
-            # players_served = [p_id for p_id, turn in enumerate(turns_num) if p_id != player_idx and turn == max_turn]
-            # self.update_preferences(get_served())
-            # players_not_served = [p_id for p_id in range(get_player_count()) if p_id != player_idx and p_id not in players_served]
-            # next_player = self.choose_player(top_layer, curr_level, players_not_served)
-            # action = "pass"
-            # values = next_player
-            # self.curr_units_taken = 0
+            turns_num = get_turns_received()
+            max_turn = max(turns_num)
+            players_served = [p_id for p_id, turn in enumerate(turns_num) if p_id != player_idx and turn == max_turn]
+            served_flavors = get_served()
+            next_serve_dict = [{f: served_flavors[p][f] for f in range(self.flavor_range[0], self.flavor_range[1] + 1)} for p in
+                                    range(get_player_count())]
+            self.update_preferences(next_serve_dict)
+            players_not_served = [p_id for p_id in range(get_player_count()) if p_id != player_idx and p_id not in players_served]
             other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            next_player = self.choose_player(top_layer, curr_level, players_not_served)
             action = "pass"
             values = next_player
             self.curr_units_taken = 0
 
+            self.prev_serve_dict = next_serve_dict
         return {"action": action, "values": values}
 
     def update_preferences(self, new_serve_dict) -> None:
-
-        for player_id, prev, curr in enumerate(zip(self.prev_serve_dict, new_serve_dict)):
+        for player_id, (prev, curr) in enumerate(zip(self.prev_serve_dict, new_serve_dict)):
             turn_differences = self.compute_turn_differences(prev, curr)
-            pass
+            print("turn differences")
+            print(turn_differences)
+            turn_totals = self.compute_turn_totals(prev, curr)
+            print("turn totals")
+            print(turn_totals)
+            turn_weighted_results = self.compute_turn_weighted_results(turn_differences, turn_totals)
+            print("turn weighted results")
+            print(turn_weighted_results)
+            self.preference_estimate[player_id] = sorted(range(len(turn_weighted_results)), key=lambda k: turn_weighted_results[k], reverse=True)
+            self.preference_estimate[player_id] = [val + 1 for val in self.preference_estimate[player_id]]
+            print("preferences")
+            print(self.preference_estimate[player_id])
 
 
     def compute_turn_differences(self, prev_serve, curr_serve) -> List[int]:
@@ -100,12 +112,37 @@ class Player:
         '''
         Helper method that compute the units of different flavor a player took
 
-        :param prev_serve:  previous serve dict. a dictionary that tells how units of a flavor are present in the bowl of the player last round
-        :param curr_serve:  current serve dict. a dictionary that tells how units of a flavor are present in the bowl of the player current round
+        :param prev_serve:  previous serve dict. a dictionary that tells how many units of a flavor are present in the bowl of the player last round
+        :param curr_serve:  current serve dict. a dictionary that tells how many units of a flavor are present in the bowl of the player current round
         :return: a list of int (0-indexed) indicating what flavor the player took since last turn
         '''
 
         return [curr_serve[f] - prev_serve[f] for f in range(self.flavor_range[0], self.flavor_range[1] + 1)]
+
+    def compute_turn_totals(self, prev_serve, curr_serve) -> List[int]:
+
+        '''
+        Helper method that compute the total units of flavor a player took
+
+        :param prev_serve:  previous serve dict. a dictionary that tells how many units of a flavor are present in the bowl of the player last round
+        :param curr_serve:  current serve dict. a dictionary that tells how many units of a flavor are present in the bowl of the player current round
+        :return: a list of int (0-indexed) indicating what flavors the player has taken in total
+        '''
+
+        return [curr_serve[f] + prev_serve[f] for f in range(self.flavor_range[0], self.flavor_range[1] + 1)]
+
+    def compute_turn_weighted_results(self, differences, total) -> List[int]:
+
+        '''
+        Helper method that computes a weighted preference value for each flavor using a weight a, where value = a * total + (1-a) * differences
+
+        :param differences:  a list of int (0-indexed) indicating what flavor the player took since last turn
+        :param total:  a list of int (0-indexed) indicating what flavors the player has taken in total
+        :return: a list of int (0-indexed) indicating flavor score
+        '''
+
+        a = 0.4
+        return [((a * total[f]) + ((1.0 - a) * differences[f])) for f in range(self.flavor_range[0]-1, self.flavor_range[1])]
 
     def choose_player(self, top_layer, curr_level, players_not_served) -> int:
 
@@ -114,9 +151,9 @@ class Player:
         for player in players_not_served:
             curr_units_taken = curr_player_score = 0
             while curr_units_taken < 24:
-                _, units_takne, score = self.get_max(top_layer, curr_level, self.preference_estimate[player],
+                _, units_taken, score = self.get_max(top_layer, curr_level, self.preference_estimate[player],
                                                      curr_units_taken)
-                curr_units_taken += units_takne
+                curr_units_taken += units_taken
                 curr_player_score += score
             if curr_player_score > best_score:
                 next_player = player
