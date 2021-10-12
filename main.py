@@ -284,6 +284,9 @@ class IceCreamGame():
     def get_turns_received(self):
         return np.copy(self.turns_received)
 
+    def get_current_player(self):
+        return self.player_names[self.next_player]
+
 
 class IceCreamApp(App):
     def __init__(self, *args):
@@ -313,6 +316,8 @@ class IceCreamApp(App):
         play_all_bt.onclick.do(self.play_all_bt_press)
         mainContainer.append(bt_hbox)
         self.label = gui.Label("Ice Cream: Ready to start")
+        self.ice_cream_game.logger.debug("First turn {}".format(self.ice_cream_game.get_current_player()))
+        self.label_set_text("First turn {}".format(self.ice_cream_game.get_current_player()))
         mainContainer.append(self.label)
 
         self.score_table = gui.TableWidget(2, len(self.ice_cream_game.players)+1, style={'margin': '5px auto'})
