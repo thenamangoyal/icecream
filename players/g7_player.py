@@ -59,7 +59,7 @@ class Player:
 
         scoop = [[curr_level[i][j],curr_level[i][j+1]],[curr_level[i+1][j],curr_level[i+1][j+1]]]
         max_level = np.amax(scoop)
-        min_level = max(np.amin(scoop),0)
+        min_level = max(np.amin(scoop),1)
 
         for level in range(max_level,min_level-1,-1):
             l = []
