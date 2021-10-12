@@ -19,8 +19,7 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = None
-        self.curr_num_scoop = 0
-
+        self.curr_units_taken = 0
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
@@ -29,7 +28,7 @@ class Player:
             top_layer (np.ndarray): Numpy 2d array of size (24, 15) containing flavor at each cell location
             curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 8 to 0, where 8 is highest level at start and 0 means no icecream left at this level
             player_idx (int): index of your player, 0-indexed
-            get_flavors (Callable[[], List[int]]): method which returns a list of all possible flavors 
+            get_flavors (Callable[[], List[int]]): method which returns a list of all possible flavors
             get_player_count (Callable[[], int]): method which returns number of total players
             get_served (Callable[[], List[Dict[int, int]]]): method which returns a list of dictionaries corresponding to each player, each dictionary at index i tells how units of a flavor are present in the bowl of the player with index i. E.g. lets say the fourth element is {1: 0, 2: 8...} means the corresponding player with index 4 has 0 units of flavor 1 and 8 units of flavor
             get_turns_received (Callable[[], List[int]]): method which returns a list of integers corresponding to each player, each element at index i tells how many turns a player with index i has played so far.
@@ -41,17 +40,16 @@ class Player:
             {"action": "pass",  "values" : i} pass to next player with index i
         """
 
-        if self.curr_num_scoop < 6:
+        if self.curr_units_taken < 24:
             action = "scoop"
             values = self.get_max(top_layer, curr_level, self.flavor_preference)
-            self.curr_num_scoop += 1
         else:
             other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
             next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             action = "pass"
             values = next_player
-            self.curr_num_scoop = 0
+            self.curr_units_taken = 0
 
         return {"action": action,  "values": values}
 
@@ -61,8 +59,8 @@ class Player:
 
 
     def get_max(self, top_layer, curr_level, preferences) -> Tuple[int, int]:
-
         ret = (-1, -1)
+        final_units_taken = 0
         max_score = -1
         m, n = top_layer.shape
         for i in range(m - 1):
@@ -71,14 +69,17 @@ class Player:
                 max_level = max([self.get_level(coord, curr_level) for coord in coords])
                 # get score for matching maximum level
                 total_score = 0
+                units_taken = 0
                 for coord in coords:
                     if curr_level[coord[0], coord[1]] == max_level:
                         if top_layer[coord] == -1:
                             continue
                         cell_score = len(preferences) - preferences.index(top_layer[coord]) + 1
                         total_score += cell_score
-                if total_score > max_score:
+                        units_taken += 1
+                if units_taken <= (24 - self.curr_units_taken) and total_score > max_score:
                     max_score = total_score
+                    final_units_taken = units_taken
                     ret = (i, j)
-
+        self.curr_units_taken += final_units_taken
         return ret
