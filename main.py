@@ -36,7 +36,12 @@ class IceCreamGame():
         fh.setLevel(logging.DEBUG)
         self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
-
+        
+        if args.seed == 0:
+            args.seed = None
+            self.logger.debug("Initialise random number generator with no seed")
+        else:
+            self.logger.debug("Initialise random number generator with {} seed".format(args.seed))
         self.rng = np.random.default_rng(args.seed)
         if args.flavors == 0:
             self.logger.debug("Using random number of flavors")
@@ -489,7 +494,7 @@ if __name__ == '__main__':
     num_flavor_choices.append(0)
     parser = argparse.ArgumentParser()
     parser.add_argument("--automatic", action="store_true", help="Start playing automatically in GUI mode")
-    parser.add_argument("--seed", "-s", type=int, default=2021, help="Seed used by random number generator")
+    parser.add_argument("--seed", "-s", type=int, default=2021, help="Seed used by random number generator, specify 0 to use no seed and have different random behavior on each launch")
     parser.add_argument("--flavors", "-f", type=int, default=constants.default_num_flavor_choice, choices=num_flavor_choices, help="Number of flavors, specify 0 to use random number of flavors")
     parser.add_argument("--port", "-p", type=int, default=8080, help="Port to start")
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
