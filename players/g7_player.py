@@ -73,6 +73,11 @@ class Player:
             
         return levels
 
+    def calc_scr_flavor_pref(self, bowl):
+        total = 0
+        for k,v in bowl.items():
+            total += self.flavor_points[k] * v
+        return total
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
@@ -104,6 +109,16 @@ class Player:
                 if scoop_point > max_scoop_point:
                     max_scoop_point = scoop_point
                     max_scoop_i, max_scoop_j = i, j
+
+        points = []
+        served = get_served()
+        turns = get_turns_received()
+        for idx in range(get_player_count()):
+            if idx != player_idx:
+                point = self.calc_scr_flavor_pref(served[idx])
+                points.append((point,turns[idx]))
+        
+        sorted_points = sorted(points, key=lambda x: (x[1], x[0]))
 
         return {"action": "scoop",  "values": (max_scoop_i, max_scoop_j)}
 
