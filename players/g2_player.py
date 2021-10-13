@@ -21,8 +21,9 @@ class Player:
 
     def get_highest_score(self,top_layer,curr_level):
         score = 0
-        max_i = -1
-        max_j = -1
+        #max_i = -1
+        #max_j = -1
+        max_locations = []
 
         # Loop through every possible 2x2 square on the grid
         for i in range(top_layer.shape[0]-1):
@@ -44,10 +45,23 @@ class Player:
                        # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
                         curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
                 unit_score = curr_score/cell_counter
-                if unit_score>score:
+                if unit_score>score: #inspired by group 6 to do per unit score
                     score=unit_score
-                    max_i=i
-                    max_j=j
+                    max_locations = [(i,j, cell_counter, highest_level)]
+                    #max_i=i
+                    #max_j=j
+                else if unit_score == score:
+                    max_locations.append((i,j, cell_counter, highest_level))
+
+        #first priority: highest_level != 0 (so we uncover something if we can)
+        #second priority: higher cell_counter (so we uncover more new spots)
+        
+
+        #ideas for future:
+        #think about level compared to neighbors (is it beneficial to leave little 1 squares or harmful)
+        #should we save units by instead prioritizing lowest cell_counter
+        #consider if decision will leave us with a left over scoop we can't use
+        #consider "similar" scores
         print(score)
         return max_i,max_j
 
