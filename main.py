@@ -88,10 +88,10 @@ class IceCreamGame():
             self.logger.debug("No GUI flag specified")
             self.play_all()
 
-    def __log(self, message):
+    def __log(self, message, label_num=0):
         self.logger.debug(message)
         if self.use_gui:
-            self.ice_cream_app.label_set_text(message)
+            self.ice_cream_app.label_set_text(message, label_num)
 
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
@@ -123,11 +123,16 @@ class IceCreamGame():
             for player_idx, score in enumerate(self.player_scores):
                 self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
             group_score = np.mean(self.player_scores)
+            final_scores = []
             self.logger.debug("Average group score for all players: {}".format(group_score))
             for player_idx, score in enumerate(self.player_scores):
                 other_player_scores = np.copy(self.player_scores)
                 other_player_scores = np.delete(other_player_scores, player_idx)
-                self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, np.mean(other_player_scores)])))
+                final_scores.append(np.mean([score, np.mean(other_player_scores)]))
+                self.logger.debug("{} final score: {}".format(self.player_names[player_idx], final_scores[player_idx]))
+            final_scores = np.array(final_scores)
+            winner_list = np.argwhere(final_scores == np.amax(final_scores))
+            self.__log("Winner{}: {}".format("s" if winner_list.shape[0] > 1 else "", ", ".join( [self.player_names[i[0]] for i in winner_list])), label_num=1)
 
     def __turn_end(self, new_next_player=None):
         self.processing_turn = False
@@ -181,6 +186,7 @@ class IceCreamGame():
                     self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
 
                 self.__log("Current turn {}".format(self.player_names[self.next_player]))
+                self.__log("Scooped (f,p)", label_num=1)
 
                 self.processing_turn = True
                 self.served_this_turn = []
@@ -251,9 +257,12 @@ class IceCreamGame():
                         for flavor in scooped_items:
                             self.served[player_idx][flavor] += 1
                             self.player_scores[player_idx] += len(self.flavors) - self.__get_flavor_preference(player_idx, flavor) + 1
+                        scooped_items_preference = [(f,self.__get_flavor_preference(player_idx, flavor)) for f in scooped_items]
 
-                        self.logger.debug("Scooped at {}: {}".format((i,j), scooped_items))
+                        self.logger.debug("Scooped (f,p): {}".format(scooped_items_preference))
                         self.served_this_turn.extend(scooped_items)
+                        if self.use_gui:
+                            self.ice_cream_app.label_set_text("{}, {}".format(self.ice_cream_app.label_get_text(label_num=1), scooped_items_preference), label_num=1)
                     else:
                         self.logger.debug("Scooping limit exceeded, passing to next player")
                         pass_next = True
@@ -325,10 +334,13 @@ class IceCreamApp(App):
         play_turn_bt.onclick.do(self.play_turn_bt_press)
         play_all_bt.onclick.do(self.play_all_bt_press)
         mainContainer.append(bt_hbox)
-        self.label = gui.Label("Ice Cream: Ready to start")
+        self.labels = []
+        self.labels.append(gui.Label("Ice Cream: Ready to start"))
+        self.labels.append(gui.Label(""))
         self.ice_cream_game.logger.debug("First turn {}".format(self.ice_cream_game.get_current_player()))
         self.label_set_text("First turn {}".format(self.ice_cream_game.get_current_player()))
-        mainContainer.append(self.label)
+        for label in self.labels:
+            mainContainer.append(label)
 
         self.score_table = gui.TableWidget(2, len(self.ice_cream_game.players)+1, style={'margin': '5px auto'})
         self.update_score_table()
@@ -409,11 +421,11 @@ class IceCreamApp(App):
     def play_all_bt_press(self, widget):
         self.ice_cream_game.play_all()
 
-    def label_set_text(self, text):
-        self.label.set_text(text)
+    def label_set_text(self, text, label_num=0):
+        self.labels[label_num].set_text(text)
 
-    def label_get_text(self):
-        return self.label.get_text()
+    def label_get_text(self, label_num=0):
+        return self.labels[label_num].get_text()
 
 
 class IceCreamContainer:
