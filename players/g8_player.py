@@ -93,18 +93,10 @@ class Player:
     def update_preferences(self, new_serve_dict) -> None:
         for player_id, (prev, curr) in enumerate(zip(self.prev_serve_dict, new_serve_dict)):
             turn_differences = self.compute_turn_differences(prev, curr)
-            print("turn differences")
-            print(turn_differences)
             turn_totals = self.compute_turn_totals(prev, curr)
-            print("turn totals")
-            print(turn_totals)
             turn_weighted_results = self.compute_turn_weighted_results(turn_differences, turn_totals)
-            print("turn weighted results")
-            print(turn_weighted_results)
             self.preference_estimate[player_id] = sorted(range(len(turn_weighted_results)), key=lambda k: turn_weighted_results[k], reverse=True)
             self.preference_estimate[player_id] = [val + 1 for val in self.preference_estimate[player_id]]
-            print("preferences")
-            print(self.preference_estimate[player_id])
 
 
     def compute_turn_differences(self, prev_serve, curr_serve) -> List[int]:
