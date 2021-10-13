@@ -24,7 +24,7 @@ class Player:
 
         Args:
             top_layer (np.ndarray): Numpy 2d array of size (24, 15) containing flavor at each cell location
-            curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 8 to 0, where 8 is highest level at start and 0 means no icecream left at this level
+            curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 7 to -1, where 7 is highest level at start and -1 means no icecream left at this level
             player_idx (int): index of your player, 0-indexed
             get_flavors (Callable[[], List[int]]): method which returns a list of all possible flavors 
             get_player_count (Callable[[], int]): method which returns number of total players
@@ -51,10 +51,15 @@ class Player:
 
     def scoop_score(self, top_layer, curr_level, pos):
         """
+        top_layer (np.ndarray): Numpy 2d array of size (24, 15) containing flavor at each cell location
+        curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 7 to -1, where 7 is highest level at start and -1 means no icecream left at this level
+        pos (Tuple[int,int]): Position of top left of scoop
+
         Returns:
             score per unit in scoop
         """
 
+        # No index out of bounds using this
         scoop_flavors = top_layer[pos[0]:pos[0]+2, pos[1]:pos[1]+2]
         scoop_levels  = curr_level[pos[0]:pos[0]+2, pos[1]:pos[1]+2]
 
@@ -64,6 +69,7 @@ class Player:
         units = 0
         
         for i,j in np.ndindex(scoop_flavors.shape):
+            # unit at same level as max and the unit is actually there
             if scoop_levels[i,j] == max_level and scoop_flavors[i,j] != -1:
                 # exactly how scores are computed in main.py
                 score += len(self.flavor_preference) - (self.flavor_preference.index(scoop_flavors[i,j]) + 1) + 1
@@ -74,39 +80,17 @@ class Player:
         
         return score
 
-    def check_scoop_size(curr_level, pos_x, pos_y):
+    def get_scoop_size(self, curr_level, pos):
         """
-        position = (pos_x, pos_y)
         curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 8 to 0, where 8 is highest level at start and 0 means no icecream left at this level
+        pos (Tuple[int,int]): Position of top left of scoop
+
+        Returns:
+            Number of units in this scoop
         """
-        scoop_size = 4
-        count_empty = 0
 
-        if pos_x == 23 and pos_y == 14:
-            scoop_size = 1
-        elif pos_x == 23:
-            scoop_size = 2
-        elif pos_y == 14:
-            scoop_size = 2
-        else:
-            if curr_level[pos_x, pos_y] == 0:
-                count_empty += 1
-            
-            if curr_level[pos_x+1, pos_y] == 0:
-                count_empty += 1
-            
-            if curr_level[pos_x, pos_y+1] == 0:
-                count_empty += 1
+        scoop_levels = curr_level[pos[0]:pos[0]+2, pos[1]:pos[1]+2]
+        max_level = np.max(scoop_levels)
 
-            if curr_level[pos_x+1, pos_y+1] == 0:
-                count_empty += 1
-
-        if count_empty != 0:
-            scoop_size -= count_empty
-        
-        return scoop_size
-
-
-
-
-
+        scoop = scoop_levels[(scoop_levels == max_level) & (scoop_levels != -1)]
+        return scoop.shape[0]
