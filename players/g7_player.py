@@ -193,20 +193,19 @@ class Player:
                 for q in range(max_num_moves-1):
                     self.priority_moves.append((i, j))
 
-        points = []
-        served = get_served()
-        turns = get_turns_received()
-        for idx in range(get_player_count()):
-            if idx != player_idx:
-                point = self.calc_scr_flavor_pref(served[idx])
-                points.append((point,turns[idx]))
-        
-        sorted_points = sorted(points, key=lambda x: (x[1], x[0]))
-        next_player = 0 # Needs to be updated
-
         time_to_pass = (remaining_scoops == 24)
 
         if time_to_pass:
+            points = []
+            served = get_served()
+            turns = get_turns_received()
+            for idx in range(get_player_count()):
+                if idx != player_idx:
+                    point = self.calc_scr_flavor_pref(served[idx])
+                    points.append((point,turns[idx],idx))
+            
+            sorted_points = sorted(points, key=lambda x: (x[1], x[0]))
+            next_player = sorted_points[2]
             self.round += 1
             return {"action": "pass", "values": next_player}
 
