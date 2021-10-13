@@ -61,15 +61,35 @@ class Player:
 
     @staticmethod
     def score_available_scoops(flavor_preference, top_layer, curr_level):
-        p_queue = []
+        p_queue_1 = []
+        p_queue_2 = []
+        p_queue_3 = []
+        p_queue_4 = []
         # Subtract one from length since 2x2 "spoon" must remain in container
         for x in range(0, top_layer.shape[0]-1):
             for y in range(0, top_layer.shape[1]-1):
                 if Player.valid_scoop(curr_level, x, y):
-                    p_queue.append(Player.scoop_value(flavor_preference, top_layer, curr_level, x, y))
+                    scoop = Player.scoop_value(flavor_preference, top_layer, curr_level, x, y)
+                    if scoop[2] == 1:
+                        p_queue_1.append(scoop)
+                    elif scoop[2] == 2:
+                        p_queue_2.append(scoop)
+                    elif scoop[2] == 3:
+                        p_queue_3.append(scoop)
+                    elif scoop[2] == 4:
+                        p_queue_4.append(scoop)
         # TODO (etm): If we care, we can use an actual heap / priority queue
-        p_queue.sort()
-        return p_queue
+        p_queue_1.sort()
+        p_queue_2.sort()
+        p_queue_3.sort()
+        p_queue_4.sort()
+        return p_queue_4, p_queue_1, p_queue_2, p_queue_3
+
+    @staticmethod
+    def no_overlap(x1, y1, x2, y2):
+        if abs(x1 - x2) <= 1 and abs(y1 - y2) <= 1:
+            return False
+        return True
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
           get_flavors: Callable[[], List[int]],
@@ -119,14 +139,72 @@ class Player:
 
             {"action": "pass", "values" : i} pass to next player with index i
         """
-        # build priority queue
-        p_queue = self.score_available_scoops(self.flavor_preference, top_layer, curr_level)
+        # build priority queues
+        p_queues = self.score_available_scoops(self.flavor_preference, top_layer, curr_level)
         # if there is still more ice-cream to take, make a scoop
         if self.state['current_turn_served'] < 24:
             action = "scoop"
-            value, (x, y), units = p_queue.pop()
-            self.state['current_turn_served'] += units
-            values = (x, y)
+            # if the number of cubes remaining is not a multiple of 4, pick scoop that rounds it out
+            if not self.state['current_turn_served'] % 4 == 0:
+                value, (x, y), units = p_queues[self.state['current_turn_served'] % 4].pop()
+                self.state['current_turn_served'] += units
+                values = (x, y)
+            # otherwise, find maximum scoring combination of moves that sum to 4 cubes
+            else:
+                best_value, (x, y), units = p_queues[0].pop()
+                # check best 3+1 scoop
+                if len(p_queues[3]) > 0 and len(p_queues[1]) > 0:
+                    s1 = p_queues[3][0]
+                    s2 = 0
+                    for scoop in p_queues[1]:
+                        if self.no_overlap(s1[1][0], s1[1][1], scoop[1][0], scoop[1][1]):
+                            s2 = scoop[0]
+                            break
+                    sum_val = s1[0] + s2
+                    if sum_val > best_value:
+                        _, (x, y), units = s1
+                        best_value = sum_val
+
+                # check best 2+2 scoop
+                if len(p_queues[2]) >= 2:
+                    s1 = p_queues[2][0]
+                    s2 = 0
+                    for scoop in p_queues[2][1:]:
+                        if self.no_overlap(s1[1][0], s1[1][1], scoop[1][0], scoop[1][1]):
+                            s2 = scoop[0]
+                            break
+                    sum_val = s1[0] + s2
+                    if sum_val > best_value:
+                        _, (x, y), units = s1
+                        best_value = sum_val
+
+                # check best 2+1+1 scoop
+                if len(p_queues[2]) > 0 and len(p_queues[1]) >= 2:
+                    s1 = p_queues[2][0]
+                    s2 = 0
+                    s3 = 0
+                    for scoop in p_queues[1]:
+                        if self.no_overlap(s1[1][0], s1[1][1], scoop[1][0], scoop[1][1]):
+                            s2 = scoop
+                            break
+                    for scoop in p_queues[1]:
+                        if self.no_overlap(s1[1][0], s1[1][1], scoop[1][0], scoop[1][1]) \
+                                and self.no_overlap(s2[1][0], s2[1][1], scoop[1][0], scoop[1][1]):
+                            s3 = scoop[0]
+                            break
+                    sum_val = s1[0] + s2[0] + s3
+                    if sum_val > best_value:
+                        _, (x, y), units = s1
+                        best_value = sum_val
+
+                # check best 1+1+1+1 scoop
+                if len(p_queues[1]) >= 4:
+                    sum_val = sum(tuple(zip(*p_queues[1][:4]))[0])
+                    if sum_val > best_value:
+                        _, (x, y), units = p_queues[1].pop()
+
+                self.state['current_turn_served'] += units
+                values = (x, y)
         else:
             self.state['current_turn_served'] = 0
             next_player = Player.best_player_to_pass_to(player_idx, get_player_count(), top_layer, curr_level, get_served, get_flavors, get_turns_received())
@@ -159,7 +237,7 @@ class Player:
             # TODO (etm):
             #   This is a crude approximation since some scoops will contain chunks of
             #   other scoops. We need a better way to update the game state
-            p_queue = Player.score_available_scoops(player_pref, top_layer, curr_level)
+            p_queue = Player.score_available_scoops(player_pref, top_layer, curr_level)[0]
             for _ in range(24):
                 if len(p_queue) == 0:
                     break
