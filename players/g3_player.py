@@ -38,7 +38,7 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
-        x = self.rng.random()
+        #x = self.rng.random()
         if self.state < 24:
             max_score = 0
             min_scoops = 4
