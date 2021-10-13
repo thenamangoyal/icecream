@@ -50,10 +50,22 @@ class Player:
                     max_locations = [(i,j, cell_counter, highest_level)]
                     #max_i=i
                     #max_j=j
-                else if unit_score == score:
+                elif unit_score == score:
                     max_locations.append((i,j, cell_counter, highest_level))
 
         #first priority: highest_level != 0 (so we uncover something if we can)
+        if len(max_locations) == 1:
+            return (max_locations[0][0], max_locations[0][1])
+        
+        max_locations.sort(key=lambda x: x[2], reverse=True)
+        higher_level = list(filter(lambda x: x[3] != 0, max_locations)) # filter function preserves order
+
+        if not higher_level:
+            return (max_locations[0][0], max_locations[0][1])
+        else:
+            return (higher_level[0][0], higher_level[0][1]) 
+
+        
         #second priority: higher cell_counter (so we uncover more new spots)
         
 
@@ -62,8 +74,7 @@ class Player:
         #should we save units by instead prioritizing lowest cell_counter
         #consider if decision will leave us with a left over scoop we can't use
         #consider "similar" scores
-        print(score)
-        return max_i,max_j
+        # print(score)
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
