@@ -140,3 +140,4 @@ dmypy.json
 
 # Debug log
 debug.log
+log/

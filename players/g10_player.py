@@ -64,7 +64,6 @@ class Player:
         player_approximate_fav = [0 for i in range(player_count)]
         for i in range(player_count):
             player_approximate_fav[i] = max(served[i], key=served[i].get) - 1
-
         # adjusted to reflect 0 index
         return player_approximate_fav
 

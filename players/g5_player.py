@@ -15,6 +15,7 @@ class Player:
             logger (logging.Logger): logger use this like logger.info("message")
         """
         self.flavor_preference = flavor_preference
+        self.reversed = flavor_preference[::-1]
         self.rng = rng
         self.logger = logger
         self.state = None
@@ -37,16 +38,87 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
-        x = self.rng.random()
-        if x < 0.95:
-            i = self.rng.integers(0, top_layer.shape[0]-1)
-            j = self.rng.integers(0, top_layer.shape[1]-1)
-            action = "scoop"
-            values = (i, j)
-        else:
-            other_player_list = list(range(0, get_player_count()))
-            other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
-            action = "pass"
-            values = next_player
+        # x = self.rng.random()
+        # if x < 0.95:
+        #     i = self.rng.integers(0, top_layer.shape[0]-1)
+        #     j = self.rng.integers(0, top_layer.shape[1]-1)
+        #     action = "scoop"
+        #     values = (i, j)
+        # else:
+        # other_player_list = list(range(0, get_player_count()))
+        # other_player_list.remove(player_idx)
+        # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+        # action = "pass"
+        # values = next_player
+        i, j = self.get_best_choice_greedy(top_layer, curr_level)
+        action = "scoop"
+        values = (i,j)
         return {"action": action,  "values": values}
+
+    '''
+    Function that allows the player to make a greedy choice in their turn
+    Iterates over all possible options where the spoon can be placed and calculates a score for each of the square based
+     on the player's preferences
+    Preferences are scored on the basis of their index in the flavor_preferences array
+    So if there are 12 flavors, the least liked flavor would get a score 0 and the most like would get a score 11
+    Returns the best possible index based on this scoring pattern
+    '''
+    def get_best_choice_greedy(self, top_layer, curr_level):
+        best_i = 0
+        best_j = 0
+        # Each flavour is assigned the score as its index in player preferences
+        best_score = 0
+        # -1 to prevent index out of bounds
+        for i in range(top_layer.shape[0]-1):
+            for j in range(top_layer.shape[1]-1):
+                topmost_level = max(curr_level[i, j], curr_level[i+1, j], curr_level[i, j+1], curr_level[i+1, j+1])
+                # Condition to handle empty ice cream cells
+                if topmost_level == -1:
+                    continue
+                curr_score = 0
+                for x in [0, 1]:
+                    for y in [0, 1]:
+                        if curr_level[i+x, j+y] == topmost_level:
+                            curr_score += self.reversed.index(top_layer[i+x, j+y]) + 1
+
+                if curr_score > best_score:
+                    best_score = curr_score
+                    best_i = i
+                    best_j = j
+
+        # Check scores of the last column, except last cell
+        j = top_layer.shape[1]-1
+        for i in range(top_layer.shape[0]-1):
+            topmost_level = max(curr_level[i, j], curr_level[i + 1, j])
+            if topmost_level == -1:
+                continue
+            curr_score = 0
+            if curr_level[i, j] == topmost_level:
+                curr_score += self.reversed.index(top_layer[i, j]) + 1
+            if curr_level[i + 1, j] == topmost_level:
+                curr_score += self.reversed.index(top_layer[i + 1, j]) + 1
+            if curr_score > best_score:
+                best_score = curr_score
+                best_i = i
+                best_j = j
+
+        # Check scores of the last row, except last cell
+        i = top_layer.shape[0] - 1
+        for j in range(top_layer.shape[1] - 1):
+            topmost_level = max(curr_level[i, j], curr_level[i, j + 1])
+            if topmost_level == -1:
+                continue
+            curr_score = 0
+            if curr_level[i, j] == topmost_level:
+                curr_score += self.reversed.index(top_layer[i, j]) + 1
+            if curr_level[i, j + 1] == topmost_level:
+                curr_score += self.reversed.index(top_layer[i, j + 1]) + 1
+            if curr_score > best_score:
+                best_score = curr_score
+                best_i = i
+                best_j = j
+
+        return best_i, best_j
+
+
+
