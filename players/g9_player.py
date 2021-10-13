@@ -19,6 +19,9 @@ class Player:
         self.logger = logger
         self.state = None
 
+        self.units_taken = 0
+        self.prev_turn = 0
+
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
 
@@ -38,15 +41,25 @@ class Player:
             {"action": "pass",  "values" : i} pass to next player with index i
         """
 
+        turns_rec = get_turns_received()[player_idx]
+        if self.prev_turn != turns_rec:
+            self.prev_turn = turns_rec
+            self.units_taken = 0
+
         action = "scoop"
         max_pos = (-1,-1)
         max_score = -1
+        max_scoop_size = 0
+
         for i in range(top_layer.shape[0]-2):
             for j in range(top_layer.shape[1]-2):
-                score = self.scoop_score(top_layer, curr_level, (i,j))
+                score, scoop_size = self.scoop_score(top_layer, curr_level, (i,j))
                 if score > max_score:
                     max_score = score
                     max_pos = (i,j)
+                    max_scoop_size = scoop_size
+        self.units_taken += max_scoop_size
+        
         return {"action": action,  "values": max_pos}
 
     def scoop_score(self, top_layer, curr_level, pos):
@@ -74,11 +87,14 @@ class Player:
                 # exactly how scores are computed in main.py
                 score += len(self.flavor_preference) - (self.flavor_preference.index(scoop_flavors[i,j]) + 1) + 1
                 units += 1
-          
-        if units != 0:
+        
+        if self.units_taken + units > 24: # Scoop will take more than 24
+            score = 0
+            units = 0
+        elif units != 0:
             score /= units
         
-        return score
+        return score, units
 
     def get_scoop_size(self, curr_level, pos):
         """
