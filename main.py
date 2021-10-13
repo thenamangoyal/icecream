@@ -32,8 +32,10 @@ class IceCreamGame():
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
+        self.log_dir = os.path.join(root_dir, 'log')
+        os.makedirs(self.log_dir, exist_ok=True)
         # create file handler which logs even debug messages
-        fh = logging.FileHandler(os.path.join(root_dir, 'debug.log'), mode="w")
+        fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
         fh.setLevel(logging.DEBUG)
         self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
@@ -97,7 +99,7 @@ class IceCreamGame():
         if player_name not in self.player_names:
             player_preference = self.rng.permutation(self.flavors).tolist()
             self.logger.debug("Adding player {} with preference {}".format(player_name, player_preference))
-            player = player_class(player_preference, self.rng, self.logger)
+            player = player_class(player_preference, self.rng, self.__get_player_logger(player_name))
             self.players.append(player)
             self.player_preferences.append(player_preference)
             self.player_names.append(player_name)
@@ -107,6 +109,17 @@ class IceCreamGame():
             self.total_turn_per_player = math.floor(120 / len(self.players))
         else:
             self.logger.debug("Failed to insert player as another player with name {} exists.".format(player_name))
+    
+    def __get_player_logger(self, player_name):
+        logger = logging.getLogger(player_name)
+        logger.setLevel(logging.DEBUG)
+        os.makedirs(self.log_dir, exist_ok=True)
+        # create file handler which logs even debug messages
+        fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
+        fh.setLevel(logging.DEBUG)
+        logger.addHandler(fh)
+        fh.setFormatter(logging.Formatter('%(message)s'))
+        return logger
 
     def __assign_next_player(self):
         # randomly select among valid players
