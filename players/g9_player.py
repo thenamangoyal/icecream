@@ -70,6 +70,38 @@ class Player:
         
         return score_per_unit
 
+    def check_scoop_size(curr_level, pos_x, pos_y):
+        """
+        position = (pos_x, pos_y)
+        curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 8 to 0, where 8 is highest level at start and 0 means no icecream left at this level
+        """
+        scoop_size = 4
+        count_empty = 0
+
+        if pos_x == 23 and pos_y == 14:
+            scoop_size = 1
+        elif pos_x == 23:
+            scoop_size = 2
+        elif pos_y == 14:
+            scoop_size = 2
+        else:
+            if curr_level[pos_x, pos_y] == 0:
+                count_empty += 1
+            
+            if curr_level[pos_x+1, pos_y] == 0:
+                count_empty += 1
+            
+            if curr_level[pos_x, pos_y+1] == 0:
+                count_empty += 1
+
+            if curr_level[pos_x+1, pos_y+1] == 0:
+                count_empty += 1
+
+        if count_empty != 0:
+            scoop_size -= count_empty
+        
+        return scoop_size
+
 
 
 
