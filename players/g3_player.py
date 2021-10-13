@@ -52,16 +52,17 @@ class Player:
                     options.append(curr_level[i][j+1])
                     options.append(curr_level[i+1][j+1])
                     top = max(options)
-                    if top > 0:
+                    if top > -1:
                         # find the score for this layer
                         score = 0
                         scoops = 0
                         for k in range(i, i+2):
                             for l in range(j, j +2):
                                 if curr_level[k,l] == top:
-                                    score = score + (len(self.flavor_preference) - self.flavor_preference.index(top_layer[k][l]))
                                     scoops = scoops + 1
-                        
+                                    if self.state + scoops <=24:
+                                        score = score + (len(self.flavor_preference) - self.flavor_preference.index(top_layer[k][l]))
+
                         if score > max_score:
                             max_score = score
                             min_scoops = scoops
