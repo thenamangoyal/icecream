@@ -272,7 +272,7 @@ class IceCreamGame():
                         for flavor in scooped_items:
                             self.served[player_idx][flavor] += 1
                             self.player_scores[player_idx] += len(self.flavors) - self.__get_flavor_preference(player_idx, flavor) + 1
-                        scooped_items_preference = [(f, self.__get_flavor_preference(player_idx, flavor)) for f in scooped_items]
+                        scooped_items_preference = [(f, self.__get_flavor_preference(player_idx, f)) for f in scooped_items]
 
                         self.logger.debug("Scooped (f,p): {}".format(scooped_items_preference))
                         self.served_this_turn.extend(scooped_items)
