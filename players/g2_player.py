@@ -21,8 +21,9 @@ class Player:
 
     def get_highest_score(self,top_layer,curr_level):
         score = 0
-        max_i = -1
-        max_j = -1
+        #max_i = -1
+        #max_j = -1
+        max_locations = []
 
         # Loop through every possible 2x2 square on the grid
         for i in range(top_layer.shape[0]-1):
@@ -40,19 +41,40 @@ class Player:
                 cell_counter = 0
                 for index,flavor in enumerate(curr_flavors):
                     if spoon_level[index] == highest_level:
-<<<<<<< HEAD
                         cell_counter+=1
-=======
-                        # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
->>>>>>> c600d35b8334504f0590e00945fd478a89590895
+                       # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
                         curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
                 unit_score = curr_score/cell_counter
-                if unit_score>score:
+                if unit_score>score: #inspired by group 6 to do per unit score
                     score=unit_score
-                    max_i=i
-                    max_j=j
-        print(score)
-        return max_i,max_j
+                    max_locations = [(i,j, cell_counter, highest_level)]
+                    #max_i=i
+                    #max_j=j
+                elif unit_score == score:
+                    max_locations.append((i,j, cell_counter, highest_level))
+
+        #first priority: highest_level != 0 (so we uncover something if we can)
+        if len(max_locations) == 1:
+            return (max_locations[0][0], max_locations[0][1])
+        
+        max_locations.sort(key=lambda x: x[2], reverse=True)
+        higher_level = list(filter(lambda x: x[3] != 0, max_locations)) # filter function preserves order
+
+        if not higher_level:
+            return (max_locations[0][0], max_locations[0][1])
+        else:
+            return (higher_level[0][0], higher_level[0][1]) 
+
+        
+        #second priority: higher cell_counter (so we uncover more new spots)
+        
+
+        #ideas for future:
+        #think about level compared to neighbors (is it beneficial to leave little 1 squares or harmful)
+        #should we save units by instead prioritizing lowest cell_counter
+        #consider if decision will leave us with a left over scoop we can't use
+        #consider "similar" scores
+        # print(score)
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
