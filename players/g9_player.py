@@ -53,16 +53,22 @@ class Player:
     def scoop_score(self, top_layer, curr_level, pos):
         max_level = np.max(curr_level[pos[0]:pos[0]+2, pos[1]:pos[1]+2])
         score = 0
+        units = 0
         
         for i in range(pos[0],pos[0]+2):
             for j in range(pos[1],pos[1]+2):
                 if curr_level[i,j] == max_level and top_layer[i,j] != -1:
                     # exactly how scores are computed in main.py
+                    units += 1
                     score += len(self.flavor_preference) - (self.flavor_preference.index(top_layer[i,j]) + 1) + 1
-        return score
+                    
 
-
-
+        if(units != 0):
+            score_per_unit = score / units
+        else:
+            score_per_unit = score
+        
+        return score_per_unit
 
 
 
