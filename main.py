@@ -154,6 +154,7 @@ class IceCreamGame():
             self.__log("No next player specified by {}".format(self.player_names[self.next_player]))
             self.next_player = self.__assign_next_player()
             self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
+        self.ice_cream_app.set_label_text("", label_num=1)
         self.logger.debug("Next turn {}".format(self.player_names[self.next_player]))
         if self.use_gui:
             self.ice_cream_app.set_label_text("{}, Next turn {}".format(self.ice_cream_app.get_label_text(), self.player_names[self.next_player]))
