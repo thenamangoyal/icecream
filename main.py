@@ -91,7 +91,7 @@ class IceCreamGame():
     def __log(self, message, label_num=0):
         self.logger.debug(message)
         if self.use_gui:
-            self.ice_cream_app.label_set_text(message, label_num)
+            self.ice_cream_app.set_label_text(message, label_num)
 
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
@@ -156,7 +156,7 @@ class IceCreamGame():
             self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
         self.logger.debug("Next turn {}".format(self.player_names[self.next_player]))
         if self.use_gui:
-            self.ice_cream_app.label_set_text("{}, Next turn {}".format(self.ice_cream_app.label_get_text(), self.player_names[self.next_player]))
+            self.ice_cream_app.set_label_text("{}, Next turn {}".format(self.ice_cream_app.get_label_text(), self.player_names[self.next_player]))
 
     def set_app(self, ice_cream_app):
         if self.use_gui:
@@ -242,7 +242,7 @@ class IceCreamGame():
                 values = action_values_dict["values"]
                 self.logger.debug("Received action: {} from {}".format(action_values_dict, self.player_names[player_idx]))
                 if self.use_gui:
-                    self.ice_cream_app.label_set_text("{}, {}".format(self.ice_cream_app.label_get_text(), action_values_dict))
+                    self.ice_cream_app.set_label_text("{}, {}".format(self.ice_cream_app.get_label_text(), action_values_dict))
 
                 if action == "scoop":
                     i, j = values
@@ -262,7 +262,7 @@ class IceCreamGame():
                         self.logger.debug("Scooped (f,p): {}".format(scooped_items_preference))
                         self.served_this_turn.extend(scooped_items)
                         if self.use_gui:
-                            self.ice_cream_app.label_set_text("{}, {}".format(self.ice_cream_app.label_get_text(label_num=1), scooped_items_preference), label_num=1)
+                            self.ice_cream_app.set_label_text("{}, {}".format(self.ice_cream_app.get_label_text(label_num=1), scooped_items_preference), label_num=1)
                     else:
                         self.logger.debug("Scooping limit exceeded, passing to next player")
                         pass_next = True
@@ -338,7 +338,7 @@ class IceCreamApp(App):
         self.labels.append(gui.Label("Ice Cream: Ready to start"))
         self.labels.append(gui.Label(""))
         self.ice_cream_game.logger.debug("First turn {}".format(self.ice_cream_game.get_current_player()))
-        self.label_set_text("First turn {}".format(self.ice_cream_game.get_current_player()))
+        self.set_label_text("First turn {}".format(self.ice_cream_game.get_current_player()))
         for label in self.labels:
             mainContainer.append(label)
 
@@ -421,10 +421,10 @@ class IceCreamApp(App):
     def play_all_bt_press(self, widget):
         self.ice_cream_game.play_all()
 
-    def label_set_text(self, text, label_num=0):
+    def set_label_text(self, text, label_num=0):
         self.labels[label_num].set_text(text)
 
-    def label_get_text(self, label_num=0):
+    def get_label_text(self, label_num=0):
         return self.labels[label_num].get_text()
 
 
