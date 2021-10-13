@@ -3,6 +3,7 @@ import numpy as np
 import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
+from collections import defaultdict
 
 
 class Player:
@@ -19,7 +20,6 @@ class Player:
         self.logger = logger
         self.state = None
         self.flavor_points = {}
-        self.average = (max(flavor_preference) + min(flavor_preference)) / 2
         self.discount = 0.9
         self.level_coef = 1
 
@@ -29,8 +29,36 @@ class Player:
             self.flavor_points[flavor_preference[i]] = flavor_preference_len - i
 
         self.flavor_points[-1] = 0
-        self.flavor_points[-2] = self.average
+        self.total_cells = 2880
+        self.distribution = self.get_init_distribution() 
+        
+    def get_init_distribution(self):
+        flavor_preference_len = len(self.flavor_preference)
+        return [self.total_cells / flavor_preference_len] * flavor_preference_len 
+    def get_distribution(self, served, top_layer):
+        # index of distribution corresopnds to flavor with value i + 1
+        self.distribution = self.get_init_distribution()
+        alt = defaultdict(int)
+        for row in top_layer:
+            for val in row:
+                if val > 0:
+                    self.distribution[val - 1] -= 1
+                    alt[val - 1] += 1
+        alt = defaultdict(int)
+        for player in served:
+            for flavor, consumed in player.items():
+                self.distribution[flavor - 1] -= consumed
+                alt[flavor-1] += consumed 
+        print(self.distribution)
+        print()
 
+    def update_hidden_cell_expectation(self, served, top_layer):
+        distribution = self.get_distribution(served, top_layer)
+        total = sum(self.distribution)
+        ans = 0
+        for i, v in enumerate(self.distribution):
+            ans += self.flavor_points[i + 1] * max(v,0) / total
+        self.flavor_points[-2] = ans
 
     def calculate_score_scoop(self, scoop):
         """
@@ -97,6 +125,7 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
+        self.update_hidden_cell_expectation(get_served(), top_layer)
 
         max_scoop_i, max_scoop_j = -1, -1
         max_scoop_point = -1
