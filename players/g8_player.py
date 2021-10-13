@@ -82,6 +82,8 @@ class Player:
             other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
             # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            if len(players_not_served) == 0:
+                players_not_served = [p_id for p_id in range(get_player_count()) if p_id != player_idx]
             next_player = self.choose_player(top_layer, curr_level, players_not_served)
             action = "pass"
             values = next_player
@@ -157,6 +159,7 @@ class Player:
         ret = (-1, -1)
         final_units_taken = 0
         max_score = -1
+        unit_max_score = -1
         m, n = top_layer.shape
         for i in range(m - 1):
             for j in range(n - 1):
@@ -168,11 +171,15 @@ class Player:
                     if curr_level[coord] == max_level:
                         if top_layer[coord] == -1:
                             continue
-                        cell_score = len(preferences) - preferences.index(top_layer[coord]) + 1
+                        cell_score = len(preferences) - preferences.index(top_layer[coord])
                         total_score += cell_score
                         units_taken += 1
-                if units_taken <= (24 - curr_units_taken) and total_score > max_score:
+                if units_taken is 0:
+                    continue
+                unit_score = total_score / units_taken
+                if units_taken <= (24 - curr_units_taken) and unit_score > unit_max_score:
                     max_score = total_score
+                    unit_max_score = unit_score
                     final_units_taken = units_taken
                     ret = (i, j)
         return ret, final_units_taken, max_score
