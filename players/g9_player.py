@@ -47,28 +47,32 @@ class Player:
                 if score > max_score:
                     max_score = score
                     max_pos = (i,j)
-
         return {"action": action,  "values": max_pos}
 
     def scoop_score(self, top_layer, curr_level, pos):
-        max_level = np.max(curr_level[pos[0]:pos[0]+2, pos[1]:pos[1]+2])
+        """
+        Returns:
+            score per unit in scoop
+        """
+
+        scoop_flavors = top_layer[pos[0]:pos[0]+2, pos[1]:pos[1]+2]
+        scoop_levels  = curr_level[pos[0]:pos[0]+2, pos[1]:pos[1]+2]
+
+        max_level = np.max(scoop_levels)
+
         score = 0
         units = 0
         
-        for i in range(pos[0],pos[0]+2):
-            for j in range(pos[1],pos[1]+2):
-                if curr_level[i,j] == max_level and top_layer[i,j] != -1:
-                    # exactly how scores are computed in main.py
-                    units += 1
-                    score += len(self.flavor_preference) - (self.flavor_preference.index(top_layer[i,j]) + 1) + 1
-                    
-
-        if(units != 0):
-            score_per_unit = score / units
-        else:
-            score_per_unit = score
+        for i,j in np.ndindex(scoop_flavors.shape):
+            if scoop_levels[i,j] == max_level and scoop_flavors[i,j] != -1:
+                # exactly how scores are computed in main.py
+                score += len(self.flavor_preference) - (self.flavor_preference.index(scoop_flavors[i,j]) + 1) + 1
+                units += 1
+          
+        if units != 0:
+            score /= units
         
-        return score_per_unit
+        return score
 
     def check_scoop_size(curr_level, pos_x, pos_y):
         """
