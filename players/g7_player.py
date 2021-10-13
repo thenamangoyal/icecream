@@ -126,9 +126,6 @@ class Player:
         prev_num_unseen_cells = 0
         num_unseen_cells = 0
 
-        if (max_level - min_level > 0):
-            jj = 0
-
         for level in range(max_level, min_level - 1, -1):
             l = []
             for x in range(2):
