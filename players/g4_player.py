@@ -5,6 +5,64 @@ import logging
 from typing import Callable, Dict, List, Tuple, Union
 
 
+class ScoopCandidate:
+    def __init__(self, loc: (int, int), top_layer: np.ndarray, curr_level: np.ndarray):
+        """
+
+        :param loc: Tuple (x,y) location of the scoop
+        :param flavor_counts: Array with the number of scoops for each flavor
+        """
+        self._x, self._y = loc
+        self._flavors = []
+
+    def add_flavor(self, flavor: int):
+        size_diff = (flavor + 1) - len(self._flavors)
+        if size_diff > 0:
+            # Extend array
+            self._flavors.extend([0] * size_diff)
+        self._flavors[flavor] += 1
+
+    def get_flavor_count(self, flavor: int):
+        if flavor < 0 or flavor >= len(self._flavors):
+            return 0
+        return self._flavors[flavor]
+
+    @property
+    def size(self):
+        return sum(self._flavors)
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
+
+    @property
+    def loc(self):
+        return self._x, self._y
+
+    def flavors(self) -> Dict[int, int]:
+        result = {}
+        for (flavor, count) in enumerate(self._flavors):
+            if count > 0:
+                result[flavor] = count
+        # return self._flavors
+        return result
+
+    def score(self, flavor_preference: List[int]):
+        """
+        Scores the candidate cube
+        :param flavor_preference: List of flavors where the leftmost flavor is most preferred
+        :return:
+        """
+
+        score = 0
+        for flavor in flavor_preference:
+            score += len(flavor_preference) * self.get_flavor_count(flavor)
+
+
 class Player:
     def __init__(self, flavor_preference: List[int], rng: np.random.Generator, logger: logging.Logger) -> None:
         """Initialise the player with given preference.
@@ -30,6 +88,10 @@ class Player:
 
     @staticmethod
     def valid_scoop(curr_level, x, y):
+        # TODO (etm): I think this function is incorrect? If the top left cube is
+        #  at a lower level we'll say that this scoop is invalid, even though we could
+        #  scoop the other cubes at the higher level. Other (x,y) positions won't capture
+        #  these possibilities
         """Helper function: returns whether a scoop at an index x,y is valid or not"""
         d = curr_level[x,y]
         if curr_level[x+1,y] <= d and curr_level[x,y+1] <= d and curr_level[x+1,y+1] <= d:
@@ -271,3 +333,26 @@ class Player:
 
         return top_layer_summed
 
+    @staticmethod
+    def evaluate_partial_scoop(top_layer: np.ndarray, curr_level: np.ndarray):
+        pass
+
+    @staticmethod
+    def iterate_coordinates(top_layer: np.ndarray):
+        """ Generator yielding the upper left (x,y) coordinates of all possible 4x4 scoops"""
+        for x in range(0, top_layer.shape[0]-1):
+            for y in range(0, top_layer.shape[1]-1):
+                yield x, y
+
+    @staticmethod
+    def scoop_unit_coordinates(loc: (int, int)) -> List[(int, int)]:
+        """Coordinates for all units that could be involved in a 2x2 scoop"""
+        x, y = loc
+        return [(x, y), (x+1, y), (x, y+1, (x+1, y+1))]
+
+    @staticmethod
+    def iterate_scoops(top_layer: np.ndarray, curr_level: np.ndarray):
+        """Generator yielding all possible single and double level scoops"""
+        for x, y in Player.iterate_coordinates(top_layer):
+            top_level = max(map(lambda x: curr_level[x[0], x[1]]), Player.scoop_unit_coordinates((x,y)))
+            top_level = max([curr_level[x, y], curr_level[x+1, y], curr_level[x, y+1], curr_level[x+1, y+1]])
