@@ -50,14 +50,17 @@ class Player:
         max_pos = (-1,-1)
         max_score = -1
         max_scoop_size = 0
+        max_scoop_level = -1
 
         for i in range(top_layer.shape[0]-1):
             for j in range(top_layer.shape[1]-1):
-                score, scoop_size = self.scoop_score(top_layer, curr_level, (i,j))
-                if score > max_score or (score == max_score and scoop_size > max_scoop_size):
+                score, scoop_size, scoop_level = self.scoop_score(top_layer, curr_level, (i,j))
+                if (score > max_score or (score == max_score and 
+                    (scoop_size > max_scoop_size or scoop_level > max_scoop_level))):
                     max_score = score
                     max_pos = (i,j)
                     max_scoop_size = scoop_size
+                    max_scoop_level = scoop_level
         self.units_taken += max_scoop_size
 
         return {"action": action,  "values": max_pos}
@@ -69,7 +72,7 @@ class Player:
         pos (Tuple[int,int]): Position of top left of scoop
 
         Returns:
-            score per unit in scoop
+            score per unit in scoop, units in scoop, scoop level
         """
 
         # No index out of bounds using this
@@ -94,7 +97,7 @@ class Player:
         elif units != 0:
             score /= units
         
-        return score, units
+        return score, units, max_level
 
     def get_scoop_size(self, curr_level, pos):
         """
