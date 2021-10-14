@@ -141,7 +141,10 @@ class IceCreamGame():
             for player_idx, score in enumerate(self.player_scores):
                 other_player_scores = np.copy(self.player_scores)
                 other_player_scores = np.delete(other_player_scores, player_idx)
-                final_scores.append(np.mean([score, np.mean(other_player_scores)]))
+                if other_player_scores.size == 0:
+                    final_scores.append(score)
+                else:
+                    final_scores.append(np.mean([score, np.mean(other_player_scores)]))
                 self.logger.debug("{} final score: {}".format(self.player_names[player_idx], final_scores[player_idx]))
             final_scores = np.array(final_scores)
             winner_list = np.argwhere(final_scores == np.amax(final_scores))
