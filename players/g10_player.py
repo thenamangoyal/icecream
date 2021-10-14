@@ -45,7 +45,7 @@ class Player:
         for i_offset in range(2):
             for j_offset in range(2):
                 current_level = curr_level[i + i_offset, j + j_offset]
-                if current_level > 0 and current_level == max_level:
+                if current_level >= 0 and current_level == max_level:
                     flavor_cells.append(top_layer[i + i_offset, j + j_offset])
         return flavor_cells
 
@@ -65,7 +65,6 @@ class Player:
         player_approximate_fav = [0 for i in range(player_count)]
         for i in range(player_count):
             player_approximate_fav[i] = max(served[i], key=served[i].get) - 1
-
         # adjusted to reflect 0 index
         return player_approximate_fav
 
