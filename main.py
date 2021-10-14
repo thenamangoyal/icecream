@@ -37,8 +37,8 @@ class IceCreamGame():
         # create file handler which logs even debug messages
         fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
         fh.setLevel(logging.DEBUG)
-        self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
+        self.logger.addHandler(fh)
 
         if args.seed == 0:
             args.seed = None
@@ -117,8 +117,8 @@ class IceCreamGame():
         # create file handler which logs even debug messages
         fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
         fh.setLevel(logging.DEBUG)
-        logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
+        logger.addHandler(fh)
         return logger
 
     def __assign_next_player(self):
