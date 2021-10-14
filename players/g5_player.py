@@ -19,6 +19,8 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = None
+        self.amt_servings = 0
+        self.current_turn = 0
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
@@ -38,6 +40,10 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
+        if get_turns_received()[player_idx] != self.current_turn:
+            self.amt_servings = 0
+            self.current_turn = self.current_turn + 1
+        
         # x = self.rng.random()
         # if x < 0.95:
         #     i = self.rng.integers(0, top_layer.shape[0]-1)
@@ -50,11 +56,80 @@ class Player:
         # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
         # action = "pass"
         # values = next_player
-        i, j = self.get_best_choice_greedy(top_layer, curr_level)
-        action = "scoop"
-        values = (i,j)
+        if (self.amt_servings == 24):
+            highest_score = 0
+            highest_player = None
+            valid_players = np.argmin(np.array(list(range(0, get_player_count()))))
+            for player in valid_players:
+                total_score = checking_the_grid(top_layer, curr_level, state.prefs)
+                if total_score >= highest_score:
+                    highest_score = total_score
+                    highest_player = player
+            action = "pass"
+            values = highest_player
+        else:
+            i, j, num_scoops = self.get_best_choice_greedy(top_layer, curr_level)
+            self.amt_servings = self.amt_servings + num_scoops
+            action = "scoop"
+            values = (i,j)
         return {"action": action,  "values": values}
 
+    def checking_the_grid(self, top_layer, curr_level, prefs):
+        total_score = np.array(top_layer.shape)
+        # Each flavour is assigned the score as its index in player preferences
+        num_scoops = 0
+        # -1 to prevent index out of bounds
+        for i in range(top_layer.shape[0]-1):
+            for j in range(top_layer.shape[1]-1):
+                num_scoops = 0
+                topmost_level = max(curr_level[i, j], curr_level[i+1, j], curr_level[i, j+1], curr_level[i+1, j+1])
+                # Condition to handle empty ice cream cells
+                if topmost_level == -1:
+                    continue
+                curr_score = 0
+                for x in [0, 1]:
+                    for y in [0, 1]:
+                        if curr_level[i+x, j+y] == topmost_level:
+                            num_scoops += 1
+                            curr_score += self.reversed.index(top_layer[i+x, j+y]) + 1
+                curr_score /= num_scoops
+                total_score[i,j] = curr_score
+
+        # # Check scores of the last column, except last cell
+        # j = top_layer.shape[1]-1
+        # for i in range(top_layer.shape[0]-1):
+        #     num_scoops = 0
+        #     topmost_level = max(curr_level[i, j], curr_level[i + 1, j])
+        #     if topmost_level == -1:
+        #         continue
+        #     curr_score = 0
+        #     if curr_level[i, j] == topmost_level:
+        #         num_scoops += 1
+        #         curr_score += self.reversed.index(top_layer[i, j]) + 1
+        #     if curr_level[i + 1, j] == topmost_level:
+        #         num_scoops += 1
+        #         curr_score += self.reversed.index(top_layer[i + 1, j]) + 1
+        #     curr_score /= num_scoops
+        #     total_score[i,j] = curr_score
+
+        # # Check scores of the last row, except last cell
+        # i = top_layer.shape[0] - 1
+        # for j in range(top_layer.shape[1] - 1):
+        #     num_scoops = 0
+        #     topmost_level = max(curr_level[i, j], curr_level[i, j + 1])
+        #     if topmost_level == -1:
+        #         continue
+        #     curr_score = 0
+        #     if curr_level[i, j] == topmost_level:
+        #         num_scoops += 1
+        #         curr_score += self.reversed.index(top_layer[i, j]) + 1
+        #     if curr_level[i, j + 1] == topmost_level:
+        #         num_scoops += 1
+        #         curr_score += self.reversed.index(top_layer[i, j + 1]) + 1
+        #     curr_score /= num_scoops
+        #     total_score[i,j] = curr_score
+
+        return total_score.sum()
     '''
     Function that allows the player to make a greedy choice in their turn
     Iterates over all possible options where the spoon can be placed and calculates a score for each of the square based
@@ -68,9 +143,12 @@ class Player:
         best_j = 0
         # Each flavour is assigned the score as its index in player preferences
         best_score = 0
+        num_scoops = 0
+        best_num_scoops = 0
         # -1 to prevent index out of bounds
         for i in range(top_layer.shape[0]-1):
             for j in range(top_layer.shape[1]-1):
+                num_scoops = 0
                 topmost_level = max(curr_level[i, j], curr_level[i+1, j], curr_level[i, j+1], curr_level[i+1, j+1])
                 # Condition to handle empty ice cream cells
                 if topmost_level == -1:
@@ -79,46 +157,59 @@ class Player:
                 for x in [0, 1]:
                     for y in [0, 1]:
                         if curr_level[i+x, j+y] == topmost_level:
+                            num_scoops += 1
                             curr_score += self.reversed.index(top_layer[i+x, j+y]) + 1
+                curr_score /= num_scoops
 
                 if curr_score > best_score:
+                    best_num_scoops = num_scoops
                     best_score = curr_score
                     best_i = i
                     best_j = j
 
         # Check scores of the last column, except last cell
-        j = top_layer.shape[1]-1
-        for i in range(top_layer.shape[0]-1):
-            topmost_level = max(curr_level[i, j], curr_level[i + 1, j])
-            if topmost_level == -1:
-                continue
-            curr_score = 0
-            if curr_level[i, j] == topmost_level:
-                curr_score += self.reversed.index(top_layer[i, j]) + 1
-            if curr_level[i + 1, j] == topmost_level:
-                curr_score += self.reversed.index(top_layer[i + 1, j]) + 1
-            if curr_score > best_score:
-                best_score = curr_score
-                best_i = i
-                best_j = j
+        # j = top_layer.shape[1]-1
+        # for i in range(top_layer.shape[0]-1):
+        #     num_scoops = 0
+        #     topmost_level = max(curr_level[i, j], curr_level[i + 1, j])
+        #     if topmost_level == -1:
+        #         continue
+        #     curr_score = 0
+        #     if curr_level[i, j] == topmost_level:
+        #         num_scoops += 1
+        #         curr_score += self.reversed.index(top_layer[i, j]) + 1
+        #     if curr_level[i + 1, j] == topmost_level:
+        #         num_scoops += 1
+        #         curr_score += self.reversed.index(top_layer[i + 1, j]) + 1
+        #     curr_score /= num_scoops
+        #     if curr_score > best_score:
+        #         best_num_scoops = num_scoops
+        #         best_score = curr_score
+        #         best_i = i
+        #         best_j = j
 
-        # Check scores of the last row, except last cell
-        i = top_layer.shape[0] - 1
-        for j in range(top_layer.shape[1] - 1):
-            topmost_level = max(curr_level[i, j], curr_level[i, j + 1])
-            if topmost_level == -1:
-                continue
-            curr_score = 0
-            if curr_level[i, j] == topmost_level:
-                curr_score += self.reversed.index(top_layer[i, j]) + 1
-            if curr_level[i, j + 1] == topmost_level:
-                curr_score += self.reversed.index(top_layer[i, j + 1]) + 1
-            if curr_score > best_score:
-                best_score = curr_score
-                best_i = i
-                best_j = j
+        # # Check scores of the last row, except last cell
+        # i = top_layer.shape[0] - 1
+        # for j in range(top_layer.shape[1] - 1):
+        #     num_scoops = 0
+        #     topmost_level = max(curr_level[i, j], curr_level[i, j + 1])
+        #     if topmost_level == -1:
+        #         continue
+        #     curr_score = 0
+        #     if curr_level[i, j] == topmost_level:
+        #         num_scoops += 1
+        #         curr_score += self.reversed.index(top_layer[i, j]) + 1
+        #     if curr_level[i, j + 1] == topmost_level:
+        #         num_scoops += 1
+        #         curr_score += self.reversed.index(top_layer[i, j + 1]) + 1
+        #     curr_score /= num_scoops
+        #     if curr_score > best_score:
+        #         best_num_scoops = num_scoops
+        #         best_score = curr_score
+        #         best_i = i
+        #         best_j = j
 
-        return best_i, best_j
+        return best_i, best_j, best_num_scoops
 
 
 
