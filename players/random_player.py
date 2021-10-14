@@ -46,7 +46,10 @@ class Player:
         else:
             other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            if not other_player_list:
+                next_player = player_idx
+            else:
+                next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             action = "pass"
             values = next_player
         return {"action": action,  "values": values}
