@@ -25,6 +25,28 @@ from players.g10_player import Player as G10_Player
 root_dir = os.path.dirname(os.path.abspath(__file__))
 
 
+class MainLoggingFilter(logging.Filter):
+    def __init__(self, name: str) -> None:
+        super().__init__(name=name)
+
+    def filter(self, record):
+        if record.name == self.name:
+            return True
+        else:
+            return False
+
+
+class PlayerLoggingFilter(logging.Filter):
+    def __init__(self, name: str) -> None:
+        super().__init__(name=name)
+
+    def filter(self, record):
+        if self.name in record.name or record.name == __name__:
+            return True
+        else:
+            return False
+
+
 class IceCreamGame():
     def __init__(self, args):
         self.args = args
@@ -38,6 +60,7 @@ class IceCreamGame():
         fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(logging.Formatter('%(message)s'))
+        fh.addFilter(MainLoggingFilter(__name__))
         self.logger.addHandler(fh)
 
         if args.seed == 0:
@@ -111,15 +134,16 @@ class IceCreamGame():
             self.logger.debug("Failed to insert player as another player with name {} exists.".format(player_name))
 
     def __get_player_logger(self, player_name):
-        logger = logging.getLogger(player_name)
-        logger.setLevel(logging.DEBUG)
-        os.makedirs(self.log_dir, exist_ok=True)
-        # create file handler which logs even debug messages
-        fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
-        fh.setLevel(logging.DEBUG)
-        fh.setFormatter(logging.Formatter('%(message)s'))
-        logger.addHandler(fh)
-        return logger
+        player_logger = logging.getLogger("{}.{}".format(__name__, player_name))
+        player_logger.setLevel(logging.DEBUG)
+
+        # add handler to self.logger with filtering
+        player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
+        player_fh.setLevel(logging.DEBUG)
+        player_fh.setFormatter(logging.Formatter('%(message)s'))
+        player_fh.addFilter(PlayerLoggingFilter(player_name))
+        self.logger.addHandler(player_fh)
+        return player_logger
 
     def __assign_next_player(self):
         # randomly select among valid players
