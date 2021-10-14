@@ -10,7 +10,7 @@ class Player:
         """Initialise the player with given preference.
 
         Args:
-            flavor_preference (List[int]): flavor preference, least flavored flavor is first element in the list and most flavored is most preferred
+            flavor_preference (List[int]): flavor preference, most flavored flavor is first element in the list and last element is least preferred flavor
             rng (np.random.Generator): numpy random number generator, use this for same player behvior across run
             logger (logging.Logger): logger use this like logger.info("message")
         """
@@ -46,7 +46,10 @@ class Player:
         else:
             other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            if not other_player_list:
+                next_player = player_idx
+            else:
+                next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             action = "pass"
             values = next_player
         return {"action": action,  "values": values}

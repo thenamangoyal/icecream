@@ -21,11 +21,17 @@ python main.py
 You can also specify the optional parameters below to disable GUI, disable browser launching, change port and address of server.
 
 ```bash
-usage: main.py [-h] [--port PORT] [--address ADDRESS] [--no_browser]
-               [--no_gui]
+usage: main.py [-h] [--automatic] [--seed SEED]
+               [--flavors {2,3,4,5,6,8,9,10,12,0}] [--port PORT]
+               [--address ADDRESS] [--no_browser] [--no_gui]
 
 optional arguments:
   -h, --help            show this help message and exit
+  --automatic           Start playing automatically in GUI mode
+  --seed SEED, -s SEED  Seed used by random number generator
+  --flavors {2,3,4,5,6,8,9,10,12,0}, -f {2,3,4,5,6,8,9,10,12,0}
+                        Number of flavors, specify 0 to use random number of
+                        flavors
   --port PORT, -p PORT  Port to start
   --address ADDRESS, -a ADDRESS
                         Address
