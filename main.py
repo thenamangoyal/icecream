@@ -94,13 +94,13 @@ class IceCreamGame():
         self.__add_player(G1_Player, "Group 1")
         self.__add_player(G2_Player, "Group 2")
         self.__add_player(G3_Player, "Group 3")
-        self.__add_player(G4_Player, "Group 4")
+        """self.__add_player(G4_Player, "Group 4")
         self.__add_player(G5_Player, "Group 5")
         self.__add_player(G6_Player, "Group 6")
         self.__add_player(G7_Player, "Group 7")
         self.__add_player(G8_Player, "Group 8")
         self.__add_player(G9_Player, "Group 9")
-        self.__add_player(G10_Player, "Group 10")
+        self.__add_player(G10_Player, "Group 10")"""
 
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
