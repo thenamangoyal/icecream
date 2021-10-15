@@ -28,22 +28,18 @@ class Player:
             'current_turn_served': 0
         }
 
-    @staticmethod
-    def valid_scoop(curr_level, x, y):
-        """Helper function: returns whether a scoop at an index x,y is valid or not"""
-        d = curr_level[x,y]
-        if curr_level[x+1,y] <= d and curr_level[x,y+1] <= d and curr_level[x+1,y+1] <= d:
-            return True
-        return False
 
     @staticmethod
     def scoop_value(flavor_preference, top_layer, curr_level, x, y):
         """Helper function: returns the value the player gets for a scoop at index x,y"""
-        d = curr_level[x, y]
+        d = max(curr_level[x, y], curr_level[x+1, y], curr_level[x, y+1], curr_level[x+1, y+1])
         try:
             if d >= 0:
-                units = 1
-                flav_total = len(flavor_preference) - flavor_preference.index(top_layer[x,y]) + 1
+                units = 0
+                flav_total = 0
+                if curr_level[x+1, y] == d:
+                    flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x,y]) + 1
+                    units += 1
                 if curr_level[x+1, y] == d:
                     flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y]) + 1
                     units += 1
@@ -68,16 +64,15 @@ class Player:
         # Subtract one from length since 2x2 "spoon" must remain in container
         for x in range(0, top_layer.shape[0]-1):
             for y in range(0, top_layer.shape[1]-1):
-                if Player.valid_scoop(curr_level, x, y):
-                    scoop = Player.scoop_value(flavor_preference, top_layer, curr_level, x, y)
-                    if scoop[2] == 1:
-                        p_queue_1.append(scoop)
-                    elif scoop[2] == 2:
-                        p_queue_2.append(scoop)
-                    elif scoop[2] == 3:
-                        p_queue_3.append(scoop)
-                    elif scoop[2] == 4:
-                        p_queue_4.append(scoop)
+                scoop = Player.scoop_value(flavor_preference, top_layer, curr_level, x, y)
+                if scoop[2] == 1:
+                    p_queue_1.append(scoop)
+                elif scoop[2] == 2:
+                    p_queue_2.append(scoop)
+                elif scoop[2] == 3:
+                    p_queue_3.append(scoop)
+                elif scoop[2] == 4:
+                    p_queue_4.append(scoop)
         # TODO (etm): If we care, we can use an actual heap / priority queue
         p_queue_1.sort()
         p_queue_2.sort()
