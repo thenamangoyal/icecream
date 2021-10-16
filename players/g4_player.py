@@ -384,12 +384,15 @@ class Player:
             top_level = max(map(lambda x: curr_level[x[0], x[1]], Player.scoop_unit_coordinates(scoop_coords)))
             single_level_scoop = ScoopCandidate(scoop_coords)
             second_level_present = False
+            if top_level == -1:
+                continue
             for x, y in Player.scoop_unit_coordinates(scoop_coords):
                 if curr_level[x, y] == top_level:
                     single_level_scoop.add_flavor(top_layer[x, y])
-                else:
+                elif curr_level[x, y] > -1:
                     second_level_present = True
-            yield single_level_scoop
+            if single_level_scoop.size > 0:
+                yield single_level_scoop
 
             # Get the two-level scoop, if one exists
             if not second_level_present or single_level_only:
@@ -402,8 +405,8 @@ class Player:
                     second_level_scoop.add_unknown()
                 if curr_level[x, y] >= top_level - 1:
                     second_level_scoop.add_flavor(top_layer[x, y], on_top)
-
-            yield second_level_scoop
+            if second_level_scoop.size > 0:
+                yield second_level_scoop
 
     def rank_scoops(self, top_layer, curr_level):
         queues = {}
