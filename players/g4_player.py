@@ -208,23 +208,17 @@ class Player:
 
             {"action": "pass", "values" : i} pass to next player with index i
         """
-        # build priority queue
-        p_queue = self.score_available_scoops(self.flavor_preference, top_layer, curr_level)
         # if there is still more ice-cream to take, make a scoop
         if self.state['current_turn_served'] < 24:
             action = "scoop"
-            value, (x, y), units = p_queue.pop()
-            self.state['current_turn_served'] += units
-            values = (x, y)
+            _, scoop = self.choose_best_scoop_combination(top_layer, curr_level).pop()
+            self.state['current_turn_served'] += scoop.actual_size
+            values = scoop.loc
         else:
             self.state['current_turn_served'] = 0
             next_player = Player.best_player_to_pass_to(player_idx, get_player_count(), top_layer, curr_level, get_served, get_flavors, get_turns_received())
             action = "pass"
             values = next_player
-
-        # get knowledge of other players
-        # pref_ranking = self.guess_player_pref_from_bowl(0, get_served(), get_flavors())  # [0] - favorite
-        # added_flavors = self.diff_served(get_served(), self.state['current_served'])
 
         # update current served
         self.state['current_served'] = get_served()
@@ -421,7 +415,7 @@ class Player:
 
         return queues
 
-    def choose_best_scoop(self, top_layer, curr_level):
+    def choose_best_scoop_combination(self, top_layer, curr_level):
         total_needed = 24 - self.state[CURRENT_TURN_SERVED]
         if total_needed == 0:
             return None
@@ -591,7 +585,7 @@ def test_scoop_generation_and_scoring():
     assert scoop.flavors().get(2) == 2
     assert scoop.flavors().get('unknown') == 3
 
-    _, chosen_scoop = player.choose_best_scoop(top_layer, curr_level)[0]
+    _, chosen_scoop = player.choose_best_scoop_combination(top_layer, curr_level)[0]
     sc = chosen_scoop.score(player.flavor_preference)
     assert sc == 13
     assert chosen_scoop.actual_size == 1
