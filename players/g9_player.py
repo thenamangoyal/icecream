@@ -2,7 +2,7 @@ import math
 import numpy as np
 import copy
 import logging
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Callable, Counter, Dict, List, Tuple, Union
 
 
 class Player:
@@ -40,30 +40,61 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
-
         turns_rec = get_turns_received()[player_idx]
         if self.prev_turn != turns_rec:
             self.prev_turn = turns_rec
             self.units_taken = 0
 
-        action = "scoop"
-        max_pos = (-1,-1)
-        max_score = -1
-        max_scoop_size = 0
-        max_scoop_level = -1
 
-        for i in range(top_layer.shape[0]-1):
-            for j in range(top_layer.shape[1]-1):
-                score, scoop_size, scoop_level = self.scoop_score(top_layer, curr_level, (i,j))
-                if (score > max_score or (score == max_score and 
-                    (scoop_size > max_scoop_size or scoop_level > max_scoop_level))):
-                    max_score = score
-                    max_pos = (i,j)
-                    max_scoop_size = scoop_size
-                    max_scoop_level = scoop_level
-        self.units_taken += max_scoop_size
+        # Only accounts for the case when 24 units have been taken
+        if(self.units_taken == 24):
+            # count flavors in layer
+            layer_Dict = {}
+            for i in range(1, len(get_flavors()) + 1):
+                layer_Dict[i] = np.count_nonzero(top_layer == i)
+            
+            # Iterate through all the players except myself and save [player_idx, layer_pt]
+            layer_score_Dict = {}
+            for i in range(len(get_served())):
+                if(i == player_idx):
+                    continue
+                pref_Dict = sorted(get_served()[i].items(), key=lambda item: item[1], reverse=True)
 
-        return {"action": action,  "values": max_pos}
+                layer_pt = 0
+                for j in range(len(get_flavors())):
+                    # If the flavor is not in the bowl, count them as 1pt/unit
+                    if(pref_Dict[j][1] == 0):
+                        layer_pt += layer_Dict[pref_Dict[j][0]]
+                    else:
+                        layer_pt += (layer_Dict[pref_Dict[j][0]] * (len(get_flavors()) - j))
+                layer_score_Dict[i] = layer_pt
+            
+            layer_score_Dict = sorted(layer_score_Dict.items(), key=lambda item: item[1], reverse=True)
+            action = "pass"
+            values = layer_score_Dict[0][0]
+
+
+        else:
+            
+            action = "scoop"
+            max_pos = (-1,-1)
+            max_score = -1
+            max_scoop_size = 0
+            max_scoop_level = -1
+
+            for i in range(top_layer.shape[0]-1):
+                for j in range(top_layer.shape[1]-1):
+                    score, scoop_size, scoop_level = self.scoop_score(top_layer, curr_level, (i,j))
+                    if (score > max_score or (score == max_score and 
+                        (scoop_size > max_scoop_size or scoop_level > max_scoop_level))):
+                        max_score = score
+                        max_pos = (i,j)
+                        max_scoop_size = scoop_size
+                        max_scoop_level = scoop_level
+            self.units_taken += max_scoop_size
+            values = max_pos           
+
+        return {"action": action,  "values": values}
 
     def scoop_score(self, top_layer, curr_level, pos):
         """
