@@ -4,9 +4,12 @@ import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
 
+# Key for the number of units served in the current turn
+CURRENT_TURN_SERVED = "current_turn_served"
+
 
 class ScoopCandidate:
-    def __init__(self, loc: (int, int), top_layer: np.ndarray, curr_level: np.ndarray):
+    def __init__(self, loc: (int, int)):
         """
 
         :param loc: Tuple (x,y) location of the scoop
@@ -14,6 +17,8 @@ class ScoopCandidate:
         """
         self._x, self._y = loc
         self._flavors = []
+        self._size = 0
+        self._unknown_flavor_count = 0
 
     def add_flavor(self, flavor: int):
         size_diff = (flavor + 1) - len(self._flavors)
@@ -21,15 +26,23 @@ class ScoopCandidate:
             # Extend array
             self._flavors.extend([0] * size_diff)
         self._flavors[flavor] += 1
+        self._size += 1
+
+    def add_unknown(self):
+        self._unknown_flavor_count += 1
+        self._size += 1
 
     def get_flavor_count(self, flavor: int):
         if flavor < 0 or flavor >= len(self._flavors):
             return 0
         return self._flavors[flavor]
 
+    def __lt__(self, other):
+        return self.size < other.size
+
     @property
     def size(self):
-        return sum(self._flavors)
+        return self._size
 
     @property
     def x(self):
@@ -48,7 +61,10 @@ class ScoopCandidate:
         for (flavor, count) in enumerate(self._flavors):
             if count > 0:
                 result[flavor] = count
-        # return self._flavors
+
+        if self._unknown_flavor_count > 0:
+            result['unknown'] = self._unknown_flavor_count
+
         return result
 
     def score(self, flavor_preference: List[int]):
@@ -59,8 +75,10 @@ class ScoopCandidate:
         """
 
         score = 0
-        for flavor in flavor_preference:
-            score += len(flavor_preference) * self.get_flavor_count(flavor)
+        for ix, flavor in enumerate(flavor_preference):
+            score += (len(flavor_preference) - ix) * self.get_flavor_count(flavor)
+        score += (self._unknown_flavor_count * len(flavor_preference) / 2)
+        return score
 
 
 class Player:
@@ -345,14 +363,123 @@ class Player:
                 yield x, y
 
     @staticmethod
-    def scoop_unit_coordinates(loc: (int, int)) -> List[(int, int)]:
+    def scoop_unit_coordinates(loc: (int, int)) -> List[tuple[int, int]]:
         """Coordinates for all units that could be involved in a 2x2 scoop"""
         x, y = loc
-        return [(x, y), (x+1, y), (x, y+1, (x+1, y+1))]
+        return [(x, y), (x+1, y), (x, y+1), (x+1, y+1)]
 
     @staticmethod
-    def iterate_scoops(top_layer: np.ndarray, curr_level: np.ndarray):
+    def iterate_scoops(top_layer: np.ndarray, curr_level: np.ndarray, single_level_only=False):
         """Generator yielding all possible single and double level scoops"""
-        for x, y in Player.iterate_coordinates(top_layer):
-            top_level = max(map(lambda x: curr_level[x[0], x[1]]), Player.scoop_unit_coordinates((x,y)))
-            top_level = max([curr_level[x, y], curr_level[x+1, y], curr_level[x, y+1], curr_level[x+1, y+1]])
+        for scoop_coords in Player.iterate_coordinates(top_layer):
+            top_level = max(map(lambda x: curr_level[x[0], x[1]], Player.scoop_unit_coordinates(scoop_coords)))
+            single_level_scoop = ScoopCandidate(scoop_coords)
+            second_level_present = False
+            for x, y in Player.scoop_unit_coordinates(scoop_coords):
+                if curr_level[x, y] == top_level:
+                    single_level_scoop.add_flavor(top_layer[x, y])
+                else:
+                    second_level_present = True
+            yield single_level_scoop
+
+            # Get the two-level scoop, if one exists
+            if not second_level_present or single_level_only:
+                continue
+
+            second_level_scoop = ScoopCandidate(scoop_coords)
+            for x, y in Player.scoop_unit_coordinates(scoop_coords):
+                if curr_level[x, y] == top_level:
+                    second_level_scoop.add_unknown()
+                if curr_level[x, y] >= top_level - 1:
+                    second_level_scoop.add_flavor(top_layer[x, y])
+
+            yield second_level_scoop
+
+    def rank_scoops(self, top_layer, curr_level):
+        queues = {}
+        for scoop in self.iterate_scoops(top_layer, curr_level):
+            q = queues.get(scoop.size)
+            if q is None:
+                queues[scoop.size] = []
+            queues[scoop.size].append((scoop.score(self.flavor_preference), scoop))
+
+        # Scores are sorted such that the best score for a given size is at index 0
+        for q in queues.values():
+            q.sort(reverse=True)
+
+        return queues
+
+
+# Run these tests with pytest
+def test_scoop_iterator():
+    """Tests basic scoop iterator function"""
+    top_layer = np.array([[2, 2], [1, 1]])
+    curr_level = np.array([[2, 2], [1, 1]])
+    scoops = list(Player.iterate_scoops(top_layer, curr_level))
+    assert len(scoops) == 2
+    first = scoops[0]
+    second = scoops[1]
+    assert first.size == 2
+    assert second.size == 6
+
+    first_flavors = first.flavors()
+    assert first_flavors.get(2) == 2
+
+    second_flavors = second.flavors()
+    assert second_flavors.get(2) == 2
+    assert second_flavors.get(1) == 2
+    assert second_flavors.get("unknown") == 2
+
+
+def test_scoop_generation_and_scoring():
+    """Tests scoop generation and scoring"""
+    # Check scoring function with a test grid
+    top_layer = np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
+    curr_level = np.array([[2, 2, 2, 3], [2, 1, 1, 2]])
+
+    player = Player([4, 3, 2, 1], np.random.default_rng(2021), logging.Logger("default"))
+    queues = player.rank_scoops(top_layer, curr_level)
+    assert list(sorted(queues.keys())) == [1, 2, 3, 4, 6, 7]
+
+    q1 = queues.get(1)
+    score, scoop = q1[0]
+    assert score == 4
+    assert scoop.size == 1
+    assert scoop.flavors().get(4) == 1
+
+    q2 = queues.get(2)
+    score, scoop = q2[0]
+    assert score == 5
+    assert scoop.size == 2
+    assert scoop.flavors().get(3) == 1
+    assert scoop.flavors().get(2) == 1
+
+    q3 = queues.get(3)
+    score, scoop = q3[0]
+    assert score == 4
+    assert scoop.size == 3
+    assert scoop.flavors().get(2) == 1
+    assert scoop.flavors().get(1) == 2
+
+    q4 = queues.get(4)
+    score, scoop = q4[0]
+    assert score == 3 + 4 + 4 + 2  # last is unknown
+    assert scoop.size == 4
+    assert scoop.flavors().get(4) == 2
+    assert scoop.flavors().get(3) == 1
+    assert scoop.flavors().get('unknown') == 1
+
+    q6 = queues.get(6)
+    score, scoop = q6[0]
+    assert score == 10 + 4  # last 4 is unknowns
+    assert scoop.size == 6
+    assert scoop.flavors().get(3) == 2
+    assert scoop.flavors().get(2) == 2
+    assert scoop.flavors().get('unknown') == 2
+
+    q7 = queues.get(7)
+    score, scoop = q7[0]
+    assert score == 6 + 6  # last 6 is unknowns
+    assert scoop.flavors().get(1) == 2
+    assert scoop.flavors().get(2) == 2
+    assert scoop.flavors().get('unknown') == 3
