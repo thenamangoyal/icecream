@@ -17,16 +17,21 @@ class ScoopCandidate:
         """
         self._x, self._y = loc
         self._flavors = []
+        # Bookkeeping size of the scoop. Includes second-level units
         self._size = 0
+        # Actual number of units at the top level
+        self._actual_size = 0
         self._unknown_flavor_count = 0
 
-    def add_flavor(self, flavor: int):
+    def add_flavor(self, flavor: int, first_level=True):
         size_diff = (flavor + 1) - len(self._flavors)
         if size_diff > 0:
             # Extend array
             self._flavors.extend([0] * size_diff)
         self._flavors[flavor] += 1
         self._size += 1
+        if first_level:
+            self._actual_size += 1
 
     def add_unknown(self):
         self._unknown_flavor_count += 1
@@ -43,6 +48,10 @@ class ScoopCandidate:
     @property
     def size(self):
         return self._size
+
+    @property
+    def actual_size(self):
+        return self._actual_size
 
     @property
     def x(self):
@@ -388,10 +397,11 @@ class Player:
 
             second_level_scoop = ScoopCandidate(scoop_coords)
             for x, y in Player.scoop_unit_coordinates(scoop_coords):
-                if curr_level[x, y] == top_level:
+                on_top = curr_level[x, y] == top_level
+                if on_top:
                     second_level_scoop.add_unknown()
                 if curr_level[x, y] >= top_level - 1:
-                    second_level_scoop.add_flavor(top_layer[x, y])
+                    second_level_scoop.add_flavor(top_layer[x, y], on_top)
 
             yield second_level_scoop
 
@@ -403,11 +413,105 @@ class Player:
                 queues[scoop.size] = []
             queues[scoop.size].append((scoop.score(self.flavor_preference), scoop))
 
-        # Scores are sorted such that the best score for a given size is at index 0
         for q in queues.values():
-            q.sort(reverse=True)
+            q.sort()
 
         return queues
+
+    def choose_best_scoop(self, top_layer, curr_level):
+        total_needed = 24 - self.state[CURRENT_TURN_SERVED]
+        if total_needed == 0:
+            return None
+
+        queues = self.rank_scoops(top_layer, curr_level)
+        partial_needed = total_needed % 4
+        if partial_needed == 0:
+            needed = 4
+        else:
+            needed = partial_needed
+        needed = min(needed, total_needed)
+
+        scoop_choices = []
+        scoop_choices.extend(Player.build_scoop_recursive([], set(), needed, queues))
+        if needed + 4 <= total_needed:
+            scoop_choices.extend(Player.build_scoop_recursive([], set(), needed + 4, queues))
+
+        def sort_fn(item):
+            score, size, _ = item
+            return score / size
+        scoop_choices.sort(key=sort_fn)
+
+        # Time to unpack some tuples
+        _, _, scoop = scoop_choices.pop()
+        return scoop
+
+    @staticmethod
+    def build_scoop_recursive(acc, exclude, units_needed, scoop_queues):
+        """
+        Returns permutations of scoops adding to `units_needed`
+        Since it returns permutations, some choices will be duplicated
+
+        :param acc: Accumulator list
+        :param exclude: Set of coordinates to exclude (already included in some scoop)
+        :param units_needed: Remaining units needed
+        :param scoop_queues: Remaining scoops that can be used
+        :return: [(score, `acc`)] where `acc` is sorted in reverse by avg unit value
+        such that the highest valued individual choice is at index 0
+        """
+        if exclude is None:
+            exclude = set()
+        if units_needed == 0:
+            score = 0
+            size = 0
+            for sz, scoop in acc:
+                score += sz
+                size += scoop.size
+
+            def sort_fn(item):
+                # score, scoop
+                sc, sp = item
+                return sc / sp.size
+
+            # Sort in reverse order by per-unit score
+            acc.sort(key=sort_fn, reverse=True)
+            return [(score, size, acc)]
+
+        result = []
+        for size in range(1, units_needed + 1):
+            q = scoop_queues.get(size)
+            if q is None:
+                continue
+
+            candidate = None
+            # TODO: The calculation of overlapping coordinates is not level aware
+            # Loop until we find a scoop that doesn't overlap a previous one, or run out
+            while len(q) > 0:
+                tmp_score, tmp_scoop = q.pop()
+                if len(exclude & set(Player.scoop_unit_coordinates(tmp_scoop.loc))) == 0:
+                    # Push this back on so it can be used in subsequent iterations
+                    # It will be popped from a copy below before we recurse deeper
+                    q.append((tmp_score, tmp_scoop))
+                    candidate = (tmp_score, tmp_scoop)
+                    break
+
+            # Anything we popped off can't be used anywhere deeper in the recursion anyways
+            scoop_queues[size] = q
+            if candidate is None:
+                continue
+
+            # Set up state for next recursive call
+            new_acc = acc.copy()
+            new_acc.append(candidate)
+
+            new_exclude = exclude & set(Player.scoop_unit_coordinates(candidate[1].loc))
+
+            new_queues = scoop_queues.copy()
+            # Pop off the scoop we just used at this level of the recursion
+            new_queues[size].pop()
+
+            result.extend(Player.build_scoop_recursive(new_acc, new_exclude, units_needed - size, new_queues))
+
+        return result
 
 
 # Run these tests with pytest
@@ -483,3 +587,8 @@ def test_scoop_generation_and_scoring():
     assert scoop.flavors().get(1) == 2
     assert scoop.flavors().get(2) == 2
     assert scoop.flavors().get('unknown') == 3
+
+    _, chosen_scoop = player.choose_best_scoop(top_layer, curr_level)[0]
+    sc = chosen_scoop.score(player.flavor_preference)
+    assert sc == 13
+    assert chosen_scoop.actual_size == 1
