@@ -84,11 +84,12 @@ class Player:
             next_serve_dict = get_served()
             self.update_preferences(next_serve_dict)
             self.learning_rate = self.step_decay(max_turn)
-            players_not_served = [p_id for p_id in range(get_player_count()) if
-                                  p_id != player_idx and p_id not in players_served]
-            # If we are the last group for the current turn
+            players_not_served = [p_id for p_id in range(get_player_count()) if p_id not in players_served]
+            other_player_list = list(range(0, get_player_count()))
+            other_player_list.remove(player_idx)
+            # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             if len(players_not_served) == 0:
-                players_not_served = [p_id for p_id in range(get_player_count()) if p_id != player_idx]
+                players_not_served = range(get_player_count())
             next_player = self.choose_player(top_layer, curr_level, players_not_served)
             values = next_player
             self.curr_units_taken = 0
@@ -213,14 +214,19 @@ class Player:
         ret = (-1, -1)
         final_units_taken = 0
         max_score = -1
+        next_max_score = -1
         unit_max_score = -1
+        next_unit_max_score = -1
         m, n = top_layer.shape
         for i in range(m - 1):
             for j in range(n - 1):
                 coords = [(i, j), (i + 1, j), (i, j + 1), (i + 1, j + 1)]
                 max_level = max([curr_level[coord] for coord in coords])
-                # get score for matching maximum level
-                total_score = units_taken = 0
+                next_coords = [curr_level[coord] for coord in coords if max_level != curr_level[coord]]
+                next_max_level = max(next_coords) if (len(next_coords)) > 0 else []
+
+                total_score = units_taken = 0 # get score for matching maximum level
+                next_total_score = next_units_taken = 0 # get score for next matching maximum level -- where next level is the next highest level (in hopes of choosing scoop that could give us a good scoop in the future)
                 for coord in coords:
                     if curr_level[coord] == max_level:
                         if top_layer[coord] == -1:
@@ -228,12 +234,26 @@ class Player:
                         cell_score = len(preferences) - preferences.index(top_layer[coord])
                         total_score += cell_score
                         units_taken += 1
+                    if curr_level[coord] == next_max_level:
+                        if top_layer[coord] == -1:
+                            continue
+                        cell_score = len(preferences) - preferences.index(top_layer[coord])
+                        next_total_score += cell_score
+                        next_units_taken += 1
                 if units_taken is 0:
                     continue
                 unit_score = total_score / units_taken
-                if units_taken <= (24 - curr_units_taken) and unit_score > unit_max_score:
-                    max_score = total_score
-                    unit_max_score = unit_score
-                    final_units_taken = units_taken
-                    ret = (i, j)
+                next_unit_score = next_total_score / next_units_taken if next_units_taken != 0 else 0
+                if units_taken <= (24 - curr_units_taken):
+                    if unit_score > unit_max_score:
+                        max_score = total_score
+                        unit_max_score = unit_score
+                        final_units_taken = units_taken
+                        ret = (i, j)
+                    if unit_score == unit_max_score and next_unit_score > next_unit_max_score:
+                        max_score = total_score
+                        next_unit_max_score = next_unit_score
+                        final_units_taken = units_taken
+                        ret = (i, j)
+
         return ret, final_units_taken, max_score
