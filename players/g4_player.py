@@ -500,7 +500,7 @@ class Player:
             new_acc = acc.copy()
             new_acc.append(candidate)
 
-            new_exclude = exclude & set(Player.scoop_unit_coordinates(candidate[1].loc))
+            new_exclude = exclude | set(Player.scoop_unit_coordinates(candidate[1].loc))
 
             new_queues = scoop_queues.copy()
             # Pop off the scoop we just used at this level of the recursion
