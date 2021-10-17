@@ -429,9 +429,17 @@ class Player:
         needed = min(needed, total_needed)
 
         scoop_choices = []
-        scoop_choices.extend(Player.build_scoop_recursive([], set(), needed, queues))
-        if needed + 4 <= total_needed:
-            scoop_choices.extend(Player.build_scoop_recursive([], set(), needed + 4, queues))
+        # This loop is necessary because it's possible to get singe-unit columns
+        # tall enough that looking 2 deep is not able to satisfy the number of needed
+        # units. For example, if there's a tall 1x1 column and you need 4 units.
+        # To account for this edge case, we decrease the needed scoops by 1 on each
+        # loop repetition until some choices are returned.
+        # You can trigger a test case for this issue with rng seed 2003
+        while len(scoop_choices) == 0 and needed > 0:
+            scoop_choices.extend(Player.build_scoop_recursive([], set(), needed, queues.copy()))
+            if needed + 4 <= total_needed:
+                scoop_choices.extend(Player.build_scoop_recursive([], set(), needed + 4, queues.copy()))
+            needed -= 1
 
         def sort_fn(item):
             score, size, _ = item
@@ -451,12 +459,13 @@ class Player:
         :param acc: Accumulator list
         :param exclude: Set of coordinates to exclude (already included in some scoop)
         :param units_needed: Remaining units needed
-        :param scoop_queues: Remaining scoops that can be used
+        :param scoop_queues: Remaining scoops that can be used. Object is modified, so pass a copy if needed
         :return: [(score, `acc`)] where `acc` is sorted in reverse by avg unit value
         such that the highest valued individual choice is at index 0
         """
-        if exclude is None:
-            exclude = set()
+        # NB: there's a lot of shallow copying necessary to make this work.. would be
+        # better in a functional language. Maybe there's a more imperative way to do this...
+
         if units_needed == 0:
             score = 0
             size = 0
@@ -478,6 +487,9 @@ class Player:
             q = scoop_queues.get(size)
             if q is None:
                 continue
+            # Create a shallow copy of q
+            # This is necessary so that we don't modify if for subsequent use by the caller.
+            q = q[:]
 
             candidate = None
             # TODO: The calculation of overlapping coordinates is not level aware
@@ -487,24 +499,29 @@ class Player:
                 if len(exclude & set(Player.scoop_unit_coordinates(tmp_scoop.loc))) == 0:
                     # Push this back on so it can be used in subsequent iterations
                     # It will be popped from a copy below before we recurse deeper
-                    q.append((tmp_score, tmp_scoop))
                     candidate = (tmp_score, tmp_scoop)
+                    q.append(candidate)
                     break
 
-            # Anything we popped off can't be used anywhere deeper in the recursion anyways
+            # Anything we popped off can't be used in subsequent iterations either,
+            # so assign q back. Remember, `scoop_queues` should have been passed as
+            # a shallow copy, so modifying this dict won't modify the caller's.
             scoop_queues[size] = q
             if candidate is None:
                 continue
+
+            # Shallow copy of the dictionary
+            new_queues = scoop_queues.copy()
+            # Shallow copy of the queue we're about to modify (q)
+            new_queues[size] = new_queues[size][:]
+            # Pop off the scoop we just used at this level of the recursion
+            new_queues[size].pop()
 
             # Set up state for next recursive call
             new_acc = acc.copy()
             new_acc.append(candidate)
 
             new_exclude = exclude | set(Player.scoop_unit_coordinates(candidate[1].loc))
-
-            new_queues = scoop_queues.copy()
-            # Pop off the scoop we just used at this level of the recursion
-            new_queues[size].pop()
 
             result.extend(Player.build_scoop_recursive(new_acc, new_exclude, units_needed - size, new_queues))
 
