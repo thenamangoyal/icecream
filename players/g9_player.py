@@ -48,16 +48,30 @@ class Player:
 
         # Only accounts for the case when 24 units have been taken
         if(self.units_taken == 24):
-            # count flavors in layer
+            # Count flavors in layer
             layer_Dict = {}
             for i in range(1, len(get_flavors()) + 1):
                 layer_Dict[i] = np.count_nonzero(top_layer == i)
             
-            # Iterate through all the players except myself and save [player_idx, layer_pt]
-            layer_score_Dict = {}
-            for i in range(len(get_served())):
+            """
+            Save players we can pass to
+            player_options are chosen by the following:
+            0. Exclude player_idx
+            1. Save those who has the same turns as min(get_turns_received())
+                a. If all players have the same # of turns, save all
+                b. If some players have less # of turns, only save them
+            """
+            player_options = []
+            for i in range(get_player_count()):
                 if(i == player_idx):
                     continue
+                
+                if(min(get_turns_received()) == get_turns_received()[i]):
+                    player_options.append(i)
+
+            # Iterate through all the players we can pass to, save [player_idx, layer_pt]
+            layer_score_Dict = {}
+            for i in player_options:
                 pref_Dict = sorted(get_served()[i].items(), key=lambda item: item[1], reverse=True)
 
                 layer_pt = 0
@@ -70,6 +84,7 @@ class Player:
                 layer_score_Dict[i] = layer_pt
             
             layer_score_Dict = sorted(layer_score_Dict.items(), key=lambda item: item[1], reverse=True)
+            
             action = "pass"
             values = layer_score_Dict[0][0]
 
