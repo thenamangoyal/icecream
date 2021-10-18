@@ -312,7 +312,11 @@ class IceCreamGame():
                     if values < 0 or values >= len(self.players):
                         self.logger.debug("Next player idx {} is out of bounds".format(values))
                     elif values == player_idx:
-                        self.logger.debug("Can't ask to pass to yourself")
+                        if np.all(self.turns_received == self.turns_received[player_idx]):
+                            # If turns received by all players is same as current player, then the current player is the last player in the turn and allowed to pass to themself
+                            next_player = values
+                        else:
+                            self.logger.debug("Can't ask to pass to yourself, unless you are last in the turn")
                     else:
                         next_player = values
                     pass_next = True
