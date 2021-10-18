@@ -301,8 +301,8 @@ class IceCreamGame():
                             self.player_scores[player_idx] += len(self.flavors) - self.__get_flavor_preference(player_idx, flavor) + 1
                         scooped_items_preference = [(flavor, self.__get_flavor_preference(player_idx, flavor)) for flavor in scooped_items]
 
-                        self.logger.debug("Scooped (f,p): {}".format(scooped_items_preference))
                         self.served_this_turn.extend(scooped_items)
+                        self.logger.debug("Scooped (f,p): {} i.e. {} unit{}. So far scooped {} unit{} in this turn".format(scooped_items_preference, len(scooped_items), "s" if len(scooped_items)>1 else "", len(self.served_this_turn), "s" if len(self.served_this_turn)>1 else ""))
                         if self.use_gui:
                             self.ice_cream_app.set_label_text("{}, {}".format(self.ice_cream_app.get_label_text(label_num=1), scooped_items_preference), label_num=1)
                     else:
@@ -312,7 +312,11 @@ class IceCreamGame():
                     if values < 0 or values >= len(self.players):
                         self.logger.debug("Next player idx {} is out of bounds".format(values))
                     elif values == player_idx:
-                        self.logger.debug("Can't ask to pass to yourself")
+                        if np.all(self.turns_received == self.turns_received[player_idx]):
+                            # If turns received by all players is same as current player, then the current player is the last player in the turn and allowed to pass to themself
+                            next_player = values
+                        else:
+                            self.logger.debug("Can't ask to pass to yourself, unless you are last in the turn")
                     else:
                         next_player = values
                     pass_next = True
