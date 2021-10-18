@@ -114,25 +114,16 @@ class Player:
         }
 
     @staticmethod
-    def valid_scoop(curr_level, x, y):
-        # TODO (etm): I think this function is incorrect? If the top left cube is
-        #  at a lower level we'll say that this scoop is invalid, even though we could
-        #  scoop the other cubes at the higher level. Other (x,y) positions won't capture
-        #  these possibilities
-        """Helper function: returns whether a scoop at an index x,y is valid or not"""
-        d = curr_level[x,y]
-        if curr_level[x+1,y] <= d and curr_level[x,y+1] <= d and curr_level[x+1,y+1] <= d:
-            return True
-        return False
-
-    @staticmethod
     def scoop_value(flavor_preference, top_layer, curr_level, x, y):
         """Helper function: returns the value the player gets for a scoop at index x,y"""
-        d = curr_level[x, y]
+        d = max(curr_level[x, y], curr_level[x+1, y], curr_level[x, y+1], curr_level[x+1, y+1])
         try:
             if d >= 0:
-                units = 1
-                flav_total = len(flavor_preference) - flavor_preference.index(top_layer[x,y]) + 1
+                units = 0
+                flav_total = 0
+                if curr_level[x+1, y] == d:
+                    flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x,y]) + 1
+                    units += 1
                 if curr_level[x+1, y] == d:
                     flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y]) + 1
                     units += 1
@@ -150,15 +141,34 @@ class Player:
 
     @staticmethod
     def score_available_scoops(flavor_preference, top_layer, curr_level):
-        p_queue = []
+        p_queue_1 = []
+        p_queue_2 = []
+        p_queue_3 = []
+        p_queue_4 = []
         # Subtract one from length since 2x2 "spoon" must remain in container
         for x in range(0, top_layer.shape[0]-1):
             for y in range(0, top_layer.shape[1]-1):
-                if Player.valid_scoop(curr_level, x, y):
-                    p_queue.append(Player.scoop_value(flavor_preference, top_layer, curr_level, x, y))
+                scoop = Player.scoop_value(flavor_preference, top_layer, curr_level, x, y)
+                if scoop[2] == 1:
+                    p_queue_1.append(scoop)
+                elif scoop[2] == 2:
+                    p_queue_2.append(scoop)
+                elif scoop[2] == 3:
+                    p_queue_3.append(scoop)
+                elif scoop[2] == 4:
+                    p_queue_4.append(scoop)
         # TODO (etm): If we care, we can use an actual heap / priority queue
-        p_queue.sort()
-        return p_queue
+        p_queue_1.sort()
+        p_queue_2.sort()
+        p_queue_3.sort()
+        p_queue_4.sort()
+        return p_queue_4, p_queue_1, p_queue_2, p_queue_3
+
+    @staticmethod
+    def no_overlap(x1, y1, x2, y2):
+        if abs(x1 - x2) <= 1 and abs(y1 - y2) <= 1:
+            return False
+        return True
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
           get_flavors: Callable[[], List[int]],
@@ -242,7 +252,7 @@ class Player:
             # TODO (etm):
             #   This is a crude approximation since some scoops will contain chunks of
             #   other scoops. We need a better way to update the game state
-            p_queue = Player.score_available_scoops(player_pref, top_layer, curr_level)
+            p_queue = Player.score_available_scoops(player_pref, top_layer, curr_level)[0]
             for _ in range(24):
                 if len(p_queue) == 0:
                     break
