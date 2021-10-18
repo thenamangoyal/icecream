@@ -80,6 +80,10 @@ class Player:
                                         top_layer[k][l]))
                                     if self.state + scoops >24:
                                         score = 0
+                        if scoops != 0 : 
+                            score = score/scoops # boundary cells causing this invalid move
+                            score += top*len(self.flavor_preference)/100
+
                         if score > max_score:
                             max_score = score
                             min_scoops = scoops
