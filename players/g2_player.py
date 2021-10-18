@@ -20,18 +20,17 @@ class Player:
         self.state = 0
 
     def get_highest_score(self,top_layer,curr_level):
+        
+        # Starting a new turn, we can scoop 24 units of ice cream
+        if self.state == 0:
+            self.state = 24
         score = 0
-        #max_i = -1
-        #max_j = -1
         max_locations = []
 
         # Loop through every possible 2x2 square on the grid
         for i in range(top_layer.shape[0]-1):
             for j in range(top_layer.shape[1]-1):
                 spoon_level = [curr_level[i,j],curr_level[i+1,j],curr_level[i,j+1],curr_level[i+1,j+1]]
-                # if we choose this, our turn will be terminated,
-                # unless it is the last step, we can use state to optimize.
-                # like when 20<state<24, we can spoon 0 if the total 4 can give us greatest score.
 
                 highest_level = max(spoon_level)
                 if highest_level < 0: # zero will get no score and -1 will get terminated, so we skip
@@ -44,26 +43,42 @@ class Player:
                         cell_counter+=1
                        # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
                         curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
-                unit_score = curr_score/cell_counter
+                unit_score = curr_score / cell_counter
+
+                # Trying to scoop more cells then we can, then we should not scoop from here
+                if cell_counter > self.state:
+                    continue
                 if unit_score>score: #inspired by group 6 to do per unit score
                     score=unit_score
                     max_locations = [(i,j, cell_counter, highest_level)]
-                    #max_i=i
-                    #max_j=j
                 elif unit_score == score:
                     max_locations.append((i,j, cell_counter, highest_level))
 
-        #first priority: highest_level != 0 (so we uncover something if we can)
+        if len(max_locations) == 0: # there is no scoop we can take
+            self.state = 0 # means we are ready for the next turn
+            return (0,0) # eventually want to make this do a choice of passing
+        
+        # first priority: highest_level != 0 (so we uncover something if we can)
         if len(max_locations) == 1:
+            self.update_state(max_locations[0][2])
             return (max_locations[0][0], max_locations[0][1])
         
         max_locations.sort(key=lambda x: x[2], reverse=True)
         higher_level = list(filter(lambda x: x[3] != 0, max_locations)) # filter function preserves order
 
         if not higher_level:
+            self.update_state(max_locations[0][2])
             return (max_locations[0][0], max_locations[0][1])
         else:
+            self.update_state(higher_level[0][2])
             return (higher_level[0][0], higher_level[0][1]) 
+
+
+    def update_state(self, units_taken):
+        self.state = self.state - units_taken
+        if self.state <= 0:
+            self.state = -1
+
 
         
         #second priority: higher cell_counter (so we uncover more new spots)
@@ -95,16 +110,15 @@ class Player:
             {"action": "pass",  "values" : i} pass to next player with index i
         """
 
-
-        action = "scoop"
-        values = self.get_highest_score(top_layer,curr_level)
-        #     # other_player_list = list(range(0, get_player_count()))
-        #     # other_player_list.remove(player_idx)
-        #     # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
-        #     # action = "pass"
-        #     # values = next_player
-        #     # i = self.rng.integers(0, top_layer.shape[0]-1)
-        #     # j = self.rng.integers(0, top_layer.shape[1]-1)
-        #     action = "scoop"
-        #     values = (1, 0)
+        # print(f'Player 2 state -> {self.state}')
+        if self.state == -1:
+            action = "pass"
+            # other_player_list = list(range(0, get_player_count()))
+            # other_player_list.remove(player_idx)
+            # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            self.state = 0 # reset for next turn
+            values = player_idx
+        else:
+            action = "scoop"
+            values = self.get_highest_score(top_layer,curr_level)
         return {"action": action,  "values": values}
