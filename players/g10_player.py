@@ -55,7 +55,7 @@ class Player:
         for i in range(len(top_layer) - 1):
             for j in range(len(top_layer[0]) - 1):
                 scoop_points, scoop_size = self.calc_scoop_points(i, j, curr_level, top_layer, flavor_preference)
-                if divide_by_scoop_size:
+                if divide_by_scoop_size and scoop_size > 0:
                     scoop_points = scoop_points / scoop_size
                 if scoop_points > max_scoop_points and scoop_size <= max_scoop_size:
                     max_scoop_points = scoop_points
