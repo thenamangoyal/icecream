@@ -16,7 +16,7 @@ from players.g2_player import Player as G2_Player
 from players.g3_player import Player as G3_Player
 from players.g4_player import Player as G4_Player
 from players.g5_player import Player as G5_Player
-# from players.g6_player import Player as G6_Player
+from players.g6_player import Player as G6_Player
 from players.g7_player import Player as G7_Player
 from players.g8_player import Player as G8_Player
 from players.g9_player import Player as G9_Player
@@ -96,7 +96,7 @@ class IceCreamGame():
         self.__add_player(G3_Player, "Group 3")
         self.__add_player(G4_Player, "Group 4")
         self.__add_player(G5_Player, "Group 5")
-        # self.__add_player(G6_Player, "Group 6")
+        self.__add_player(G6_Player, "Group 6")
         self.__add_player(G7_Player, "Group 7")
         self.__add_player(G8_Player, "Group 8")
         self.__add_player(G9_Player, "Group 9")
