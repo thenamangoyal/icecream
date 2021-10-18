@@ -6,6 +6,7 @@ import remi.gui as gui
 from remi import start, App
 import copy
 import json
+import traceback
 import logging
 import argparse
 import constants
@@ -24,6 +25,28 @@ from players.g10_player import Player as G10_Player
 root_dir = os.path.dirname(os.path.abspath(__file__))
 
 
+class MainLoggingFilter(logging.Filter):
+    def __init__(self, name: str) -> None:
+        super().__init__(name=name)
+
+    def filter(self, record):
+        if record.name == self.name:
+            return True
+        else:
+            return False
+
+
+class PlayerLoggingFilter(logging.Filter):
+    def __init__(self, name: str) -> None:
+        super().__init__(name=name)
+
+    def filter(self, record):
+        if self.name in record.name or record.name == __name__:
+            return True
+        else:
+            return False
+
+
 class IceCreamGame():
     def __init__(self, args):
         self.args = args
@@ -31,12 +54,20 @@ class IceCreamGame():
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
+        self.log_dir = os.path.join(root_dir, 'log')
+        os.makedirs(self.log_dir, exist_ok=True)
         # create file handler which logs even debug messages
-        fh = logging.FileHandler(os.path.join(root_dir, 'debug.log'), mode="w")
+        fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
         fh.setLevel(logging.DEBUG)
-        self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
+        fh.addFilter(MainLoggingFilter(__name__))
+        self.logger.addHandler(fh)
 
+        if args.seed == 0:
+            args.seed = None
+            self.logger.debug("Initialise random number generator with no seed")
+        else:
+            self.logger.debug("Initialise random number generator with {} seed".format(args.seed))
         self.rng = np.random.default_rng(args.seed)
         if args.flavors == 0:
             self.logger.debug("Using random number of flavors")
@@ -82,15 +113,16 @@ class IceCreamGame():
             self.logger.debug("No GUI flag specified")
             self.play_all()
 
-    def __log(self, message):
+    def __log(self, message, label_num=0):
         self.logger.debug(message)
         if self.use_gui:
-            self.ice_cream_app.label_set_text(message)
+            self.ice_cream_app.set_label_text(message, label_num)
 
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
             player_preference = self.rng.permutation(self.flavors).tolist()
-            player = player_class(player_preference, self.rng, self.logger)
+            self.logger.debug("Adding player {} with preference {}".format(player_name, player_preference))
+            player = player_class(player_preference, self.rng, self.__get_player_logger(player_name))
             self.players.append(player)
             self.player_preferences.append(player_preference)
             self.player_names.append(player_name)
@@ -100,6 +132,18 @@ class IceCreamGame():
             self.total_turn_per_player = math.floor(120 / len(self.players))
         else:
             self.logger.debug("Failed to insert player as another player with name {} exists.".format(player_name))
+
+    def __get_player_logger(self, player_name):
+        player_logger = logging.getLogger("{}.{}".format(__name__, player_name))
+        player_logger.setLevel(logging.DEBUG)
+
+        # add handler to self.logger with filtering
+        player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
+        player_fh.setLevel(logging.DEBUG)
+        player_fh.setFormatter(logging.Formatter('%(message)s'))
+        player_fh.addFilter(PlayerLoggingFilter(player_name))
+        self.logger.addHandler(player_fh)
+        return player_logger
 
     def __assign_next_player(self):
         # randomly select among valid players
@@ -116,9 +160,19 @@ class IceCreamGame():
             for player_idx, score in enumerate(self.player_scores):
                 self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
             group_score = np.mean(self.player_scores)
-            self.logger.debug("Average group score: {}".format(group_score))
+            final_scores = []
+            self.logger.debug("Average group score for all players: {}".format(group_score))
             for player_idx, score in enumerate(self.player_scores):
-                self.logger.debug("{} final score: {}".format(self.player_names[player_idx], np.mean([score, group_score])))
+                other_player_scores = np.copy(self.player_scores)
+                other_player_scores = np.delete(other_player_scores, player_idx)
+                if other_player_scores.size == 0:
+                    final_scores.append(score)
+                else:
+                    final_scores.append(np.mean([score, np.mean(other_player_scores)]))
+                self.logger.debug("{} final score: {}".format(self.player_names[player_idx], final_scores[player_idx]))
+            final_scores = np.array(final_scores)
+            winner_list = np.argwhere(final_scores == np.amax(final_scores))
+            self.__log("Winner{}: {}".format("s" if winner_list.shape[0] > 1 else "", ", ".join([self.player_names[i[0]] for i in winner_list])), label_num=1)
 
     def __turn_end(self, new_next_player=None):
         self.processing_turn = False
@@ -140,9 +194,11 @@ class IceCreamGame():
             self.__log("No next player specified by {}".format(self.player_names[self.next_player]))
             self.next_player = self.__assign_next_player()
             self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
+        if self.use_gui:
+            self.ice_cream_app.set_label_text("", label_num=1)
         self.logger.debug("Next turn {}".format(self.player_names[self.next_player]))
         if self.use_gui:
-            self.ice_cream_app.label_set_text("{}, Next turn {}".format(self.ice_cream_app.label_get_text(), self.player_names[self.next_player]))
+            self.ice_cream_app.set_label_text("{}, Next turn {}".format(self.ice_cream_app.get_label_text(), self.player_names[self.next_player]))
 
     def set_app(self, ice_cream_app):
         if self.use_gui:
@@ -172,6 +228,7 @@ class IceCreamGame():
                     self.logger.debug("Assigned new player {}".format(self.player_names[self.next_player]))
 
                 self.__log("Current turn {}".format(self.player_names[self.next_player]))
+                self.__log("Scooped (f,p)", label_num=1)
 
                 self.processing_turn = True
                 self.served_this_turn = []
@@ -216,30 +273,38 @@ class IceCreamGame():
             player = self.players[player_idx]
             top_layer = self.ice_cream_container.get_top_layer()
             curr_level = self.ice_cream_container.get_curr_level()
-            action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
+            try:
+                action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
+            except Exception as e:
+                self.logger.error(e, exc_info=True)
+                action_values_dict = dict()
             is_valid_action = self.__check_action(action_values_dict)
             if is_valid_action:
                 action = action_values_dict["action"]
                 values = action_values_dict["values"]
                 self.logger.debug("Received action: {} from {}".format(action_values_dict, self.player_names[player_idx]))
                 if self.use_gui:
-                    self.ice_cream_app.label_set_text("{}, {}".format(self.ice_cream_app.label_get_text(), action_values_dict))
+                    self.ice_cream_app.set_label_text("{}, {}".format(self.ice_cream_app.get_label_text(), action_values_dict))
 
                 if action == "scoop":
                     i, j = values
                     if not(i >= 0 and i < self.l-1 and j >= 0 and j < self.w-1):
-                        self.logger.debug("Given out of bounds scoop position {}".format((i, j)))
+                        self.logger.debug("Received out of bounds scoop position {}".format((i, j)))
                         pass_next = True
                     elif len(self.ice_cream_container.scoop(i, j, dry_run=True)) <= 0:
-                        self.logger.debug("Given empty scooping position, passing to next player")
+                        self.logger.debug("Received empty scooping position, passing to next player")
                         pass_next = True
                     elif len(self.ice_cream_container.scoop(i, j, dry_run=True)) + len(self.served_this_turn) <= self.max_allowed_per_turn:
                         scooped_items = self.ice_cream_container.scoop(i, j, dry_run=False)
                         for flavor in scooped_items:
                             self.served[player_idx][flavor] += 1
                             self.player_scores[player_idx] += len(self.flavors) - self.__get_flavor_preference(player_idx, flavor) + 1
+                        scooped_items_preference = [(flavor, self.__get_flavor_preference(player_idx, flavor)) for flavor in scooped_items]
 
                         self.served_this_turn.extend(scooped_items)
+                        self.logger.debug("Scooped (f,p): {} i.e. {} unit{}. So far scooped {} unit{} in this turn".format(scooped_items_preference, len(scooped_items), "s" if len(scooped_items)>1 else "", len(self.served_this_turn), "s" if len(self.served_this_turn)>1 else ""))
+                        if self.use_gui:
+                            self.ice_cream_app.set_label_text("{}, {}".format(self.ice_cream_app.get_label_text(label_num=1), scooped_items_preference), label_num=1)
                     else:
                         self.logger.debug("Scooping limit exceeded, passing to next player")
                         pass_next = True
@@ -247,12 +312,16 @@ class IceCreamGame():
                     if values < 0 or values >= len(self.players):
                         self.logger.debug("Next player idx {} is out of bounds".format(values))
                     elif values == player_idx:
-                        self.logger.debug("Can't ask to pass to yourself")
+                        if np.all(self.turns_received == self.turns_received[player_idx]):
+                            # If turns received by all players is same as current player, then the current player is the last player in the turn and allowed to pass to themself
+                            next_player = values
+                        else:
+                            self.logger.debug("Can't ask to pass to yourself, unless you are last in the turn")
                     else:
                         next_player = values
                     pass_next = True
             else:
-                self.logger.debug("Given invalid action_value_dict.")
+                self.logger.debug("Received invalid action from player {}, passing to next player.".format(self.player_names[player_idx]))
                 pass_next = True
 
             if do_update and self.use_gui:
@@ -279,6 +348,9 @@ class IceCreamGame():
 
     def get_turns_received(self):
         return np.copy(self.turns_received)
+
+    def get_current_player(self):
+        return self.player_names[self.next_player]
 
 
 class IceCreamApp(App):
@@ -308,8 +380,13 @@ class IceCreamApp(App):
         play_turn_bt.onclick.do(self.play_turn_bt_press)
         play_all_bt.onclick.do(self.play_all_bt_press)
         mainContainer.append(bt_hbox)
-        self.label = gui.Label("Ice Cream: Ready to start")
-        mainContainer.append(self.label)
+        self.labels = []
+        self.labels.append(gui.Label("Ice Cream: Ready to start"))
+        self.labels.append(gui.Label(""))
+        self.ice_cream_game.logger.debug("First turn {}".format(self.ice_cream_game.get_current_player()))
+        self.set_label_text("First turn {}".format(self.ice_cream_game.get_current_player()))
+        for label in self.labels:
+            mainContainer.append(label)
 
         self.score_table = gui.TableWidget(2, len(self.ice_cream_game.players)+1, style={'margin': '5px auto'})
         self.update_score_table()
@@ -319,7 +396,7 @@ class IceCreamApp(App):
             self.score_table.item_at(1, player_idx).set_style("padding:0 10px")
         mainContainer.append(self.score_table)
 
-        paths = ["gray.png", "yellow.png", "green.png", "red.png", "blue.png", "cream.png", "pink.png", "orange.png", "brown.png", "cyan.png", "almond.png", "strawberry.png"]
+        paths = ["yellow.png", "brown.png", "blue.png", "gray.png", "green.png", "pink.png", "red.png", "orange.png", "cyan.png",  "cream.png", "almond.png", "strawberry.png"]
         self.flavor_to_path = {k: v for k, v in zip(self.ice_cream_game.flavors, paths)}
         self.flavor_to_path[-1] = "cross.png"
 
@@ -390,11 +467,11 @@ class IceCreamApp(App):
     def play_all_bt_press(self, widget):
         self.ice_cream_game.play_all()
 
-    def label_set_text(self, text):
-        self.label.set_text(text)
+    def set_label_text(self, text, label_num=0):
+        self.labels[label_num].set_text(text)
 
-    def label_get_text(self):
-        return self.label.get_text()
+    def get_label_text(self, label_num=0):
+        return self.labels[label_num].get_text()
 
 
 class IceCreamContainer:
@@ -480,7 +557,7 @@ if __name__ == '__main__':
     num_flavor_choices.append(0)
     parser = argparse.ArgumentParser()
     parser.add_argument("--automatic", action="store_true", help="Start playing automatically in GUI mode")
-    parser.add_argument("--seed", "-s", type=int, default=2021, help="Seed used by random number generator")
+    parser.add_argument("--seed", "-s", type=int, default=2021, help="Seed used by random number generator, specify 0 to use no seed and have different random behavior on each launch")
     parser.add_argument("--flavors", "-f", type=int, default=constants.default_num_flavor_choice, choices=num_flavor_choices, help="Number of flavors, specify 0 to use random number of flavors")
     parser.add_argument("--port", "-p", type=int, default=8080, help="Port to start")
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
