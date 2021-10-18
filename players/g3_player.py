@@ -46,36 +46,21 @@ class Player:
             max_score = 0
             min_scoops = 4
             best_cell = (0,0)
-            for i in range(0, len(curr_level)):
-                for j in range(0, len(curr_level[0])):
+            for i in range(0, len(curr_level)-1):
+                for j in range(0, len(curr_level[0])-1):
                     # first find the cells of ice cream on the top level we can take
                     options = []
-                    addi = 0
-                    addj = 0
-                    if i < (len(curr_level)-1) and j < (len(curr_level[0])-1):
-                        options.append(curr_level[i][j])
-                        options.append(curr_level[i+1][j])
-                        options.append(curr_level[i][j+1])
-                        options.append(curr_level[i+1][j+1])
-                        addi = 2
-                        addj = 2
-                    elif i == (len(curr_level)-1) and j < (len(curr_level[0])-1):
-                        options.append(curr_level[i][j])
-                        options.append(curr_level[i][j + 1])
-                        addj = 2
-                    elif i < (len(curr_level) - 1) and j == (len(curr_level[0]) - 1):
-                        options.append(curr_level[i][j])
-                        options.append(curr_level[i + 1][j])
-                        addi = 2
-                    elif i == (len(curr_level) - 1) and j == (len(curr_level[0]) - 1):
-                        options.append(curr_level[i][j])
+                    options.append(curr_level[i][j])
+                    options.append(curr_level[i+1][j])
+                    options.append(curr_level[i][j+1])
+                    options.append(curr_level[i+1][j+1])
                     top = max(options)
                     if top > -1:
                         # find the score for this layer
                         score = 0
                         scoops = 0
-                        for k in range(i, i+addi):
-                            for l in range(j, j +addj):
+                        for k in range(i, i+2):
+                            for l in range(j, j +2):
                                 if curr_level[k,l] == top:
                                     # check if over 24 and set score to 0 if thats the case
                                     scoops = scoops + 1
