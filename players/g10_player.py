@@ -49,17 +49,19 @@ class Player:
                     flavor_cells.append(top_layer[i + i_offset, j + j_offset])
         return flavor_cells
 
-    def find_max_scoop(self, top_layer, curr_level, flavor_preference, max_scoop_size):
+    def find_max_scoop(self, top_layer, curr_level, flavor_preference, max_scoop_size, divide_by_scoop_size=True):
         max_scoop_loc = (0, 0)
         max_scoop_points = 0
         for i in range(len(top_layer) - 1):
             for j in range(len(top_layer[0]) - 1):
                 scoop_points, scoop_size = self.calc_scoop_points(i, j, curr_level, top_layer, flavor_preference)
+                if divide_by_scoop_size:
+                    scoop_points = scoop_points / scoop_size
                 if scoop_points > max_scoop_points and scoop_size <= max_scoop_size:
                     max_scoop_points = scoop_points
                     max_scoop_loc = (i, j)
 
-        return max_scoop_loc
+        return max_scoop_loc, max_scoop_points
 
     def get_player_approximate_fav(self, player_count, served) -> List[int]:
         player_approximate_fav = [0 for i in range(player_count)]
@@ -112,6 +114,22 @@ class Player:
         # 0 indexed
         return top_layer_flavour_count
 
+    def return_optimal_pass(self, get_turns_received, get_player_count, get_served, player_idx, top_layer):
+        action = "pass"
+        turns_received = get_turns_received()
+        curr_iteration = turns_received[player_idx]
+        available_players = [i for i in range(len(turns_received)) if turns_received[i] < curr_iteration]
+        # print("pass available for : ", available_players)
+        if len(available_players) > 1:
+            values = self.get_player_preferences(top_layer, get_player_count(), get_served(), turns_received,
+                                                 available_players)
+        elif len(available_players) == 1:
+            values = available_players[0]
+        else:
+            values = -1
+
+        return action, values
+
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
               get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int],
               get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[
@@ -138,23 +156,18 @@ class Player:
             self.curr_turn = get_turns_received()[player_idx]
 
         if self.num_units_in_turn >= 24:
-            action = "pass"
-            turns_received = get_turns_received()
-            curr_iteration = turns_received[player_idx]
-            available_players = [i for i in range(len(turns_received)) if turns_received[i]<curr_iteration]
-            #print("pass available for : ", available_players)
-            if len(available_players) > 1 :
-                values = self.get_player_preferences(top_layer, get_player_count(), get_served(), turns_received, available_players)
-            elif len(available_players) == 1 :
-                values = available_players[0]
-            else :
-                values = -1
-            print("selected values : ", values)
+            action, values = self.return_optimal_pass(get_turns_received, get_player_count, get_served, player_idx, top_layer)
+            # print("selected values : ", values)
             #print("top layer was :", self.get_top_layer_flavour_count(top_layer))
         else:
             action = "scoop"
-            values = self.find_max_scoop(top_layer, curr_level, self.flavor_preference, 24 - self.num_units_in_turn)
-            self.num_units_in_turn += len(self.get_flavor_cells_from_scoop(values[0], values[1], curr_level, top_layer))
+            values, points = self.find_max_scoop(top_layer, curr_level, self.flavor_preference, 24 - self.num_units_in_turn, divide_by_scoop_size=True)
+
+            #If no scoop was found, pass it
+            if points == 0:
+                action, values = self.return_optimal_pass(get_turns_received, get_player_count, get_served, player_idx, top_layer)
+            else:
+                self.num_units_in_turn += len(self.get_flavor_cells_from_scoop(values[0], values[1], curr_level, top_layer))
 
         #self.player_bowl_snapshot = get_served()
         return {"action": action, "values": values}
