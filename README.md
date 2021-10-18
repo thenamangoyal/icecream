@@ -28,7 +28,9 @@ usage: main.py [-h] [--automatic] [--seed SEED]
 optional arguments:
   -h, --help            show this help message and exit
   --automatic           Start playing automatically in GUI mode
-  --seed SEED, -s SEED  Seed used by random number generator
+  --seed SEED, -s SEED  Seed used by random number generator, specify 0 to use
+                        no seed and have different random behavior on each
+                        launch
   --flavors {2,3,4,5,6,8,9,10,12,0}, -f {2,3,4,5,6,8,9,10,12,0}
                         Number of flavors, specify 0 to use random number of
                         flavors
