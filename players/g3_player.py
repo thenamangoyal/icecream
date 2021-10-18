@@ -60,7 +60,7 @@ class Player:
                         score = 0
                         scoops = 0
                         for k in range(i, i+2):
-                            for l in range(j, j +2):
+                            for l in range(j, j+2):
                                 if curr_level[k,l] == top:
                                     # check if over 24 and set score to 0 if thats the case
                                     scoops = scoops + 1
@@ -76,11 +76,10 @@ class Player:
                             max_score = score
                             min_scoops = scoops
                             best_cell = (i,j)
-                        elif score == max_score:
-                            if scoops < min_scoops:
-                                max_score = score
-                                min_scoops = scoops
-                                best_cell = (i,j)
+                        elif score == max_score and scoops >= min_scoops:
+                            max_score = score
+                            min_scoops = scoops
+                            best_cell = (i,j)
 
             action = "scoop"
             self.state = self.state + min_scoops
