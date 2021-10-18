@@ -376,7 +376,7 @@ class Player:
                 yield x, y
 
     @staticmethod
-    def scoop_unit_coordinates(loc: (int, int)) -> List[tuple[int, int]]:
+    def scoop_unit_coordinates(loc: (int, int)) -> List[Tuple[int, int]]:
         """Coordinates for all units that could be involved in a 2x2 scoop"""
         x, y = loc
         return [(x, y), (x+1, y), (x, y+1), (x+1, y+1)]
