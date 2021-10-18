@@ -95,16 +95,19 @@ class IceCreamGame():
 
         self.game = pd.DataFrame(columns=['preference', 'turn', 'total', 'score', 'avg_score'])
 
-        self.__add_player(G1_Player, "Group 1")
-        self.__add_player(G2_Player, "Group 2")
-        self.__add_player(G3_Player, "Group 3")
-        self.__add_player(G4_Player, "Group 4")
-        self.__add_player(G5_Player, "Group 5")
-        self.__add_player(G6_Player, "Group 6")
-        self.__add_player(G7_Player, "Group 7")
-        self.__add_player(G8_Player, "Group 8")
-        self.__add_player(G9_Player, "Group 9")
-        self.__add_player(G10_Player, "Group 10")
+        for i in range(args.players):
+            self.__add_player(G7_Player, "Group "+str(i))
+
+        #self.__add_player(G1_Player, "Group 1")
+        #self.__add_player(G2_Player, "Group 2")
+        #self.__add_player(G3_Player, "Group 3")
+        #self.__add_player(G4_Player, "Group 4")
+        #self.__add_player(G5_Player, "Group 5")
+        #self.__add_player(G6_Player, "Group 6")
+        #self.__add_player(G7_Player, "Group 7")
+        #self.__add_player(G8_Player, "Group 8")
+        #self.__add_player(G9_Player, "Group 9")
+        #self.__add_player(G10_Player, "Group 10")
 
         for i in range(1, self.total_turn_per_player + 1):
             self.game['turn_' + str(i)] = [{}] * len(self.game)
@@ -623,5 +626,6 @@ if __name__ == '__main__':
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
     parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
+    parser.add_argument("--players", "-np", type=int, default=10, help="Number of players")
     args = parser.parse_args()
     ice_cream_game = IceCreamGame(args)
