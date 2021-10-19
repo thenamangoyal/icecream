@@ -118,15 +118,20 @@ class Player:
         action = "pass"
         turns_received = get_turns_received()
         curr_iteration = turns_received[player_idx]
+        last_iteration = 120//get_player_count()
         available_players = [i for i in range(len(turns_received)) if turns_received[i] < curr_iteration]
         # print("pass available for : ", available_players)
-        if len(available_players) > 1:
+        if len(available_players) == 0 and curr_iteration==last_iteration-1:
+            values = player_idx
+        elif len(available_players) == 0 :
+            available_players = [i for i in range(len(turns_received)) if i is not player_idx]
             values = self.get_player_preferences(top_layer, get_player_count(), get_served(), turns_received,
                                                  available_players)
         elif len(available_players) == 1:
             values = available_players[0]
-        else:
-            values = -1
+        else :
+            values = self.get_player_preferences(top_layer, get_player_count(), get_served(), turns_received,
+                                                 available_players)
 
         return action, values
 
