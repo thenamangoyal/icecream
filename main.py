@@ -96,7 +96,6 @@ class IceCreamGame():
         self.__add_player(G3_Player, "Group 3")
         self.__add_player(G4_Player, "Group 4")
         self.__add_player(G5_Player, "Group 5")
-        self.__add_player(G6_Player, "Group 6")
         self.__add_player(G7_Player, "Group 7")
         self.__add_player(G8_Player, "Group 8")
         self.__add_player(G9_Player, "Group 9")
@@ -396,7 +395,7 @@ class IceCreamApp(App):
             self.score_table.item_at(1, player_idx).set_style("padding:0 10px")
         mainContainer.append(self.score_table)
 
-        paths = ["yellow.png", "brown.png", "blue.png", "gray.png", "green.png", "pink.png", "red.png", "orange.png", "cyan.png",  "cream.png", "almond.png", "strawberry.png"]
+        paths = ["yellow.png", "brown.png", "green.png", "strawberry.png",  "almond.png",  "cream.png", "blue.png", "pink.png", "gray.png", "red.png", "orange.png", "cyan.png"]
         self.flavor_to_path = {k: v for k, v in zip(self.ice_cream_game.flavors, paths)}
         self.flavor_to_path[-1] = "cross.png"
 
