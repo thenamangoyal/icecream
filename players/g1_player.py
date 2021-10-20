@@ -10,6 +10,7 @@ class Choice(NamedTuple):
     flavors: List[int]
     max_depth: int
     index: Tuple[int, int]
+    all_cells: List[Tuple[int, int]]
 
 
 def generate_choices(top_layer: np.ndarray, curr_level: np.ndarray) -> List[Choice]:
@@ -17,6 +18,7 @@ def generate_choices(top_layer: np.ndarray, curr_level: np.ndarray) -> List[Choi
     for i in range(top_layer.shape[0] - 1):
         for j in range(top_layer.shape[1] - 1):
             cur = list()
+            all_cells = list()
             max_depth = -1
             for x in range(2):
                 for y in range(2):
@@ -27,13 +29,14 @@ def generate_choices(top_layer: np.ndarray, curr_level: np.ndarray) -> List[Choi
                 for y in range(2):
                     if max_depth == curr_level[i + x][j + y]:
                         cur.append(top_layer[i + x][j + y])
-            res.append(Choice(cur, max_depth, (i, j)))
+                        all_cells.append((i + x, j + y))
+            res.append(Choice(cur, max_depth, (i, j), all_cells))
     return res
 
 
 def choose_next_player(now_turn: int, possible_players: List[int], served_situation: List[Dict[int, int]],
                        top_layer: np.ndarray, curr_level: np.ndarray, rng: np.random.Generator,
-                       player_idx: int, my_flavor_preference: List[int], total_players: int) -> int:
+                       my_player_idx: int, my_flavor_preference: List[int], total_players: int) -> int:
     if len(possible_players) == 1:
         return possible_players[0]
 
@@ -43,7 +46,9 @@ def choose_next_player(now_turn: int, possible_players: List[int], served_situat
 
     # if there are no candidates, which means our team is the last one to serve
     if len(possible_players) == 0:
-        possible_players = [i for i in range(total_players) if i != player_idx]
+        possible_players = [i for i in range(total_players)]
+
+    max_turns = math.floor(120 / total_players)
 
     choices = generate_choices(top_layer, curr_level)
     # if all ice cream has been taken
@@ -58,27 +63,34 @@ def choose_next_player(now_turn: int, possible_players: List[int], served_situat
 
     max_score = -math.inf
     next_player_list = []
+    # the more groups, the less choices
     total_units = 24
-    # test weighted = 0.01, 0.1, 0.5, 0.8, 1 and find the performance of 0.5 is the best
-    # although I don't know why, but I guess we can test it for several rounds later
-    weighted = 0.5
+    if total_players > 4:
+        total_units = 24 - int((0.3 * total_players) * 4)
+
+    weighted = weightedFunction(now_turn, max_turns)
 
     for player_index, flavor_preference in greedy_flavor_preference.items():
         score_list = []
         for choice in choices:
-            score_list.append((score(choice, flavor_preference), len(choice.flavors)))
+            score_list.append((score(choice, flavor_preference), choice.all_cells, len(choice.flavors)))
 
         score_list.sort(key=lambda x: -x[0])
-        remain = total_units
-        player_max_score = 0
-        for score_num, count in score_list:
-            if remain - count < 0:
+
+        remain = total_units - score_list[0][2]
+        player_max_score = score_list[0][0]
+
+        before_choice = score_list[0][1]
+
+        for score_num, current_choice, count in score_list[1:]:
+            overlap = findOverlapScoop(before_choice, current_choice)
+            if remain - (count - overlap) < 0:
                 break
-            remain -= count
+            remain -= (count - overlap)
             player_max_score += score_num
 
         player_max_score = player_max_score / (total_units - remain) \
-                           + weighted * difference(my_flavor_preference, flavor_preference)
+                           + weighted * difference(served_situation[my_player_idx], served_situation[player_index])
 
         if max_score < player_max_score:
             max_score = player_max_score
@@ -87,10 +99,33 @@ def choose_next_player(now_turn: int, possible_players: List[int], served_situat
             next_player_list.append(player_index)
 
     # if len(next_player_list) == 1, just return,
-    # if the length is larger than 1, we may choose randomly choose a from the set
+    # if the length is larger than 1
     if len(next_player_list) == 1:
         return list(next_player_list)[0]
-    return rng.choice(list(next_player_list))
+
+    flavor_differences = []
+    for player_index in next_player_list:
+        flavor_differences.append(
+            (difference(served_situation[my_player_idx], served_situation[player_index]), player_index))
+    flavor_differences.sort(key=lambda x: x[0])
+    return flavor_differences[0][1]
+
+
+def weightedFunction(turn, max_turns):
+    # we trust the later information more than before,
+    # but the last information may be trusted less because groups have fewer choices
+    exp_fun = 1 - math.exp(- turn / max_turns * 5)
+    if turn / max_turns > 0.8:
+        exp_fun -= 0.1 * turn / max_turns
+    return exp_fun
+
+
+def findOverlapScoop(choice1: List[Tuple[int, int]], choice2: List[Tuple[int, int]]) -> int:
+    overlap = 0
+    for scoopi, scoopj in choice2:
+        if (scoopi, scoopj) in choice1:
+            overlap += 1
+    return overlap
 
 
 # copy from the below f function
@@ -104,11 +139,13 @@ def score(choice: Choice, flavor_preference) -> float:
     return res
 
 
-def difference(my_flavor_preference: List[int], other_flavor_preference: List[int]) -> float:
+def difference(my_flavor_preference: Dict[int, int], other_flavor_preference: Dict[int, int]) -> float:
     sum_difference = 0.0
-    for i, flavor in enumerate(my_flavor_preference):
-        other_i = other_flavor_preference.index(flavor)
-        sum_difference += abs(i - other_i)
+    my_flavor_preference_count = sum(my_flavor_preference.values())
+    other_flavor_preference_count = sum(other_flavor_preference.values())
+    for flavor, flavor_count in my_flavor_preference.items():
+        sum_difference += abs(flavor_count / my_flavor_preference_count -
+                              other_flavor_preference[flavor] / other_flavor_preference_count)
     return sum_difference / len(my_flavor_preference)
 
 
@@ -118,8 +155,6 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = [0]
-        group_id = 1
-        self.group_id = group_id - 1
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
               get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int],
@@ -128,7 +163,7 @@ class Player:
         remain = 24 - self.state[-1]
         choices = generate_choices(top_layer, curr_level)
         choices = list(filter(lambda x: len(x.flavors) <= remain, choices))
-        self.logger.info(choices)
+        # self.logger.info(choices)
         if not choices:
             turns = get_turns_received()
             total_players = get_player_count()
@@ -144,7 +179,7 @@ class Player:
 
             # if we just randomly choose one person
             # if len(players) == 0:
-            #     players = [i for i in range(total_players) if i != player_idx]
+            #     players = [i for i in range(total_players)]
             # return dict(action="pass", values=self.rng.choice(players))
 
         def f(choice: Choice) -> float:
