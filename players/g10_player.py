@@ -87,20 +87,46 @@ class Player:
         #asc order -> max preferred flavour at max index
         #print("serving details : ", served)
         player_preferences = [sorted(d.items(), key=operator.itemgetter(1)) for d in served]
-        #print("player preference : ", player_preferences)
         max_score = 0
         select = -1
+        estimated_score = []
+        magic_percentage = 0.1
         top_layer_flavour_count = self.get_top_layer_flavour_count(top_layer)
         for i in range(len(player_preferences)):
-            if i in available_players : 
-                #print("player ",i , " : ")
+            if i in available_players :
                 score = self.get_player_score(top_layer_flavour_count,player_preferences[i])
+                estimated_score.append(score)
                 if score > max_score :
                     max_score = score
-                    select = i
+
+        max_score *= magic_percentage
+        select_players = []
+        for i in range(len(estimated_score)) :
+            if estimated_score[i] >= max_score :
+                select_players.append(available_players[i])
+
+        flavour_count = len(self.flavor_preference)
+        our_flavour_preference = set(self.flavor_preference[:flavour_count//2:])
+        same_preference_count = 0
+        for sp in select_players :
+            sp_flavour_preferences = []
+            for (flavour, count) in player_preferences[sp][flavour_count//2::] :
+                sp_flavour_preferences.append(flavour)
+            sp_flavour_preferences = set(sp_flavour_preferences)
+            temp = len(our_flavour_preference.intersection(sp_flavour_preferences))
+            if temp > same_preference_count :
+                select = sp
+                same_preference_count = temp
+
+        if same_preference_count == 0 :
+            if len(select_players) > 0 :
+                select = select_players[0]
+            else :
+                select = -1
 
         # adjusted to reflect 0 index
         return select
+
 
     def get_top_layer_flavour_count(self, top_layer: np.ndarray) -> List[int]:
         top_layer_flavour_count = [0 for x in self.flavor_preference]
@@ -121,10 +147,10 @@ class Player:
         last_iteration = 120//get_player_count()
         available_players = [i for i in range(len(turns_received)) if turns_received[i] < curr_iteration]
         # print("pass available for : ", available_players)
-        if len(available_players) == 0 and curr_iteration==last_iteration-1:
-            values = player_idx
-        elif len(available_players) == 0 :
-            available_players = [i for i in range(len(turns_received)) if i is not player_idx]
+        #if len(available_players) == 0 and curr_iteration==last_iteration-1:
+        #    values = player_idx
+        if len(available_players) == 0:
+            available_players = [i for i in range(len(turns_received))]
             values = self.get_player_preferences(top_layer, get_player_count(), get_served(), turns_received,
                                                  available_players)
         elif len(available_players) == 1:
