@@ -24,7 +24,7 @@ class Player:
 
         Args:
             top_layer (np.ndarray): Numpy 2d array of size (24, 15) containing flavor at each cell location
-            curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 8 to 0, where 8 is highest level at start and 0 means no icecream left at this level
+            curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 7 to 0, where 7 is highest level at start and -1 means no icecream left at this level
             player_idx (int): index of your player, 0-indexed
             get_flavors (Callable[[], List[int]]): method which returns a list of all possible flavors 
             get_player_count (Callable[[], int]): method which returns number of total players
@@ -46,7 +46,10 @@ class Player:
         else:
             other_player_list = list(range(0, get_player_count()))
             other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
+            if not other_player_list:
+                next_player = player_idx
+            else:
+                next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             action = "pass"
             values = next_player
         return {"action": action,  "values": values}

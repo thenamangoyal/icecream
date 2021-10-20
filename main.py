@@ -25,6 +25,28 @@ from players.g10_player import Player as G10_Player
 root_dir = os.path.dirname(os.path.abspath(__file__))
 
 
+class MainLoggingFilter(logging.Filter):
+    def __init__(self, name: str) -> None:
+        super().__init__(name=name)
+
+    def filter(self, record):
+        if record.name == self.name:
+            return True
+        else:
+            return False
+
+
+class PlayerLoggingFilter(logging.Filter):
+    def __init__(self, name: str) -> None:
+        super().__init__(name=name)
+
+    def filter(self, record):
+        if self.name in record.name or record.name == __name__:
+            return True
+        else:
+            return False
+
+
 class IceCreamGame():
     def __init__(self, args):
         self.args = args
@@ -37,8 +59,9 @@ class IceCreamGame():
         # create file handler which logs even debug messages
         fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
         fh.setLevel(logging.DEBUG)
-        self.logger.addHandler(fh)
         fh.setFormatter(logging.Formatter('%(message)s'))
+        fh.addFilter(MainLoggingFilter(__name__))
+        self.logger.addHandler(fh)
 
         if args.seed == 0:
             args.seed = None
@@ -111,15 +134,16 @@ class IceCreamGame():
             self.logger.debug("Failed to insert player as another player with name {} exists.".format(player_name))
 
     def __get_player_logger(self, player_name):
-        logger = logging.getLogger(player_name)
-        logger.setLevel(logging.DEBUG)
-        os.makedirs(self.log_dir, exist_ok=True)
-        # create file handler which logs even debug messages
-        fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
-        fh.setLevel(logging.DEBUG)
-        logger.addHandler(fh)
-        fh.setFormatter(logging.Formatter('%(message)s'))
-        return logger
+        player_logger = logging.getLogger("{}.{}".format(__name__, player_name))
+        player_logger.setLevel(logging.DEBUG)
+
+        # add handler to self.logger with filtering
+        player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
+        player_fh.setLevel(logging.DEBUG)
+        player_fh.setFormatter(logging.Formatter('%(message)s'))
+        player_fh.addFilter(PlayerLoggingFilter(player_name))
+        self.logger.addHandler(player_fh)
+        return player_logger
 
     def __assign_next_player(self):
         # randomly select among valid players
@@ -141,7 +165,10 @@ class IceCreamGame():
             for player_idx, score in enumerate(self.player_scores):
                 other_player_scores = np.copy(self.player_scores)
                 other_player_scores = np.delete(other_player_scores, player_idx)
-                final_scores.append(np.mean([score, np.mean(other_player_scores)]))
+                if other_player_scores.size == 0:
+                    final_scores.append(score)
+                else:
+                    final_scores.append(np.mean([score, np.mean(other_player_scores)]))
                 self.logger.debug("{} final score: {}".format(self.player_names[player_idx], final_scores[player_idx]))
             final_scores = np.array(final_scores)
             winner_list = np.argwhere(final_scores == np.amax(final_scores))
@@ -274,8 +301,8 @@ class IceCreamGame():
                             self.player_scores[player_idx] += len(self.flavors) - self.__get_flavor_preference(player_idx, flavor) + 1
                         scooped_items_preference = [(flavor, self.__get_flavor_preference(player_idx, flavor)) for flavor in scooped_items]
 
-                        self.logger.debug("Scooped (f,p): {}".format(scooped_items_preference))
                         self.served_this_turn.extend(scooped_items)
+                        self.logger.debug("Scooped (f,p): {} i.e. {} unit{}. So far scooped {} unit{} in this turn".format(scooped_items_preference, len(scooped_items), "s" if len(scooped_items)>1 else "", len(self.served_this_turn), "s" if len(self.served_this_turn)>1 else ""))
                         if self.use_gui:
                             self.ice_cream_app.set_label_text("{}, {}".format(self.ice_cream_app.get_label_text(label_num=1), scooped_items_preference), label_num=1)
                     else:
@@ -285,7 +312,11 @@ class IceCreamGame():
                     if values < 0 or values >= len(self.players):
                         self.logger.debug("Next player idx {} is out of bounds".format(values))
                     elif values == player_idx:
-                        self.logger.debug("Can't ask to pass to yourself")
+                        if np.all(self.turns_received == self.turns_received[player_idx]):
+                            # If turns received by all players is same as current player, then the current player is the last player in the turn and allowed to pass to themself
+                            next_player = values
+                        else:
+                            self.logger.debug("Can't ask to pass to yourself, unless you are last in the turn")
                     else:
                         next_player = values
                     pass_next = True

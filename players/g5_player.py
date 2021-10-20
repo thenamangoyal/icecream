@@ -15,9 +15,13 @@ class Player:
             logger (logging.Logger): logger use this like logger.info("message")
         """
         self.flavor_preference = flavor_preference
+        self.reverse_preference = flavor_preference[::-1]
         self.rng = rng
         self.logger = logger
         self.state = None
+        self.amt_servings = 0
+        self.current_turn = 0
+        self.other_player_prefs = {}
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
@@ -37,16 +41,105 @@ class Player:
             {"action": "scoop",  "values" : (i,j)} stating to scoop the 4 cells with index (i,j), (i+1,j), (i,j+1), (i+1,j+1)
             {"action": "pass",  "values" : i} pass to next player with index i
         """
-        x = self.rng.random()
-        if x < 0.95:
-            i = self.rng.integers(0, top_layer.shape[0]-1)
-            j = self.rng.integers(0, top_layer.shape[1]-1)
+        if get_turns_received()[player_idx] != self.current_turn:
+            self.logger.info("SERVINGS G5: " + str(self.amt_servings))
+            self.amt_servings = 0
+            self.current_turn = self.current_turn + 1
+
+        if self.amt_servings == 24:
+            global_served = get_served()
+            self.get_other_player_prefs(global_served)
+            highest_score = 0
+            highest_player = None
+            turns_received = np.array(get_turns_received())
+            valid_players = np.where(turns_received == turns_received.min())[0]
+            for player in valid_players:
+                total_score = self.checking_the_grid(top_layer, curr_level, self.other_player_prefs[player])
+                if total_score >= highest_score:
+                    highest_score = total_score
+                    highest_player = player
+            action = "pass"
+            values = highest_player
+        else:
+            i, j, num_scoops = self.get_best_choice_greedy(top_layer, curr_level, 24 - self.amt_servings)
+            self.amt_servings = self.amt_servings + num_scoops
             action = "scoop"
             values = (i, j)
-        else:
-            other_player_list = list(range(0, get_player_count()))
-            other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
-            action = "pass"
-            values = next_player
         return {"action": action,  "values": values}
+
+    '''
+    Function to calculate preferences of other people based on the content they already have in their bowls
+    Assumes that a greater number of particular flavor indicates that the person prefers that flavor
+    '''
+    def get_other_player_prefs(self, global_served):
+        for i in range(len(global_served)):
+            player_servings = sorted(global_served[i].items(), key=lambda kv: (kv[1], kv[0]))
+            self.other_player_prefs[i] = [serve[0] for serve in reversed(player_servings)]
+
+    '''
+    Check the grid and assign a score to each player depending on their preference
+    Returns a total of all these scores
+    '''
+    def checking_the_grid(self, top_layer, curr_level, prefs):
+        total_score = np.zeros(top_layer.shape)
+        # Each flavour is assigned the score as its index in player preferences
+        num_scoops = 0
+        # -1 to prevent index out of bounds
+        for i in range(top_layer.shape[0]-1):
+            for j in range(top_layer.shape[1]-1):
+                num_scoops = curr_score = 0
+                topmost_level = max(curr_level[i, j], curr_level[i+1, j], curr_level[i, j+1], curr_level[i+1, j+1])
+                # Condition to handle empty ice cream cells
+                if topmost_level == -1:
+                    continue
+                for x in [0, 1]:
+                    for y in [0, 1]:
+                        if curr_level[i+x, j+y] == topmost_level:
+                            num_scoops += 1
+                            curr_score += prefs.index(top_layer[i+x, j+y])
+                curr_score /= num_scoops
+                total_score[i, j] = curr_score
+
+        return total_score.sum()
+
+    '''
+    Function that allows the player to make a greedy choice in their turn
+    Iterates over all possible options where the spoon can be placed and calculates a score for each of the square based on the player's preferences
+    Preferences are scored on the basis of their index in the flavor_preferences array
+    So if there are 12 flavors, the least liked flavor would get a score 0 and the most like would get a score 11
+    Returns the best possible index based on this scoring pattern
+    '''
+    def get_best_choice_greedy(self, top_layer, curr_level, max_num_scoops):
+        best_i = 0
+        best_j = 0
+        # Each flavour is assigned the score as its index in player preferences
+        best_score = 0
+        best_num_scoops = 0
+        # -1 to prevent index out of bounds
+        for i in range(top_layer.shape[0]-1):
+            for j in range(top_layer.shape[1]-1):
+                num_scoops = curr_score = 0
+                topmost_level = max(curr_level[i, j], curr_level[i+1, j], curr_level[i, j+1], curr_level[i+1, j+1])
+                # Condition to handle empty ice cream cells
+                if topmost_level == -1:
+                    continue
+                for x in [0, 1]:
+                    for y in [0, 1]:
+                        if curr_level[i+x, j+y] == topmost_level:
+                            num_scoops += 1
+                            curr_score += self.reverse_preference.index(top_layer[i+x, j+y])
+                curr_score /= num_scoops
+
+                if num_scoops > max_num_scoops:
+                    continue
+
+                if curr_score > best_score:
+                    best_num_scoops = num_scoops
+                    best_score = curr_score
+                    best_i = i
+                    best_j = j
+
+        return best_i, best_j, best_num_scoops
+
+
+
