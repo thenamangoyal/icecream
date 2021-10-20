@@ -17,7 +17,7 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = 0
-        self.turns = 0
+        #self.turns = 0
 
     def get_highest_score(self,top_layer,curr_level):
         
@@ -91,7 +91,22 @@ class Player:
         #consider "similar" scores
         # print(score)
 
-    def get_unserved_players(self,get_player_count,get_served):
+    def get_unserved_players(self, players, player_idx, get_turns_recieved):
+        min_turns = float("inf")
+        passing_options = []
+        turns = get_turns_recieved()
+        for i in range(len(players)):
+            if i == player_idx: #we aren't an option for ourselves here
+                continue
+            t = turns[i]
+            if t == min_turns:
+                passing_options.append(i)
+            elif t < min_turns:
+                min_turns = t
+                passing_options = [i]
+
+        return passing_options
+        '''
         unserved_players = list()
         players = [i for i in range(get_player_count())]
         for player in players:
@@ -99,18 +114,19 @@ class Player:
             if total_cells<=(self.turns*24):
                 unserved_players.append(player)
         return unserved_players
+        '''
 
     def cosine_similarity(self,a,b):
         return np.dot(a,b)/(np.linalg.norm(a)*np.linalg.norm(b))
 
-    def get_most_similar_player(self,get_player_count,get_served,player_idx):
+    def get_most_similar_player(self,get_player_count,get_served, player_idx, get_turns_recieved):
         players = [i for i in range(get_player_count())]
         players_feature_vector = list()
         for player in players:
-            feature_vector = np.array([value for value in get_served()[player].values()])
-            feature_vector = feature_vector/np.sum(feature_vector)
+            feature_vector = np.array([value + 0.001 for value in get_served()[player].values()]) # + 0.001 so we don't ever divide by 0
+            feature_vector = feature_vector/(np.sum(feature_vector)+1)
             players_feature_vector.append(feature_vector)
-        unserved_players = self.get_unserved_players(get_player_count,get_served)
+        unserved_players = self.get_unserved_players(players,player_idx, get_turns_recieved)
         self_feature_vector = players_feature_vector[player_idx]
 
         most_similar_player = -1
@@ -130,6 +146,9 @@ class Player:
             return player_idx
         else:
             return most_similar_player
+
+
+        #def most_similar_top_preferences(self, get_player_count, get_served, player_idx, get_turns_recieved):
 
 
 
@@ -157,12 +176,11 @@ class Player:
         if self.state == -1:
             action = "pass"
             self.state = 0 # reset for next turn
-            if self.turns >0:
-                values = self.get_most_similar_player(get_player_count,get_served,player_idx)
-                print("Most similar player:",values)
-            else:
-                values = player_idx
-            self.turns+=1
+
+            values = self.get_most_similar_player(get_player_count,get_served, player_idx, get_turns_received)
+            print("Most similar player:",values)
+
+            #self.turns+=1
             #values = player_idx
         else:
             action = "scoop"
