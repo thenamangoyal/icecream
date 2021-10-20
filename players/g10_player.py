@@ -8,6 +8,10 @@ from typing import Callable, Dict, List, Tuple, Union
 from random import choice
 
 
+def round_score(num):
+    return round(num, 4)
+
+
 class Player:
     def __init__(self, flavor_preference: List[int], rng: np.random.Generator, logger: logging.Logger) -> None:
         """Initialise the player with given preference.
@@ -51,17 +55,31 @@ class Player:
 
     def find_max_scoop(self, top_layer, curr_level, flavor_preference, max_scoop_size, divide_by_scoop_size=True):
         max_scoop_loc = (0, 0)
+        max_scoop_points_per_unit = 0
         max_scoop_points = 0
         for i in range(len(top_layer) - 1):
             for j in range(len(top_layer[0]) - 1):
                 scoop_points, scoop_size = self.calc_scoop_points(i, j, curr_level, top_layer, flavor_preference)
-                if divide_by_scoop_size and scoop_size > 0:
-                    scoop_points = scoop_points / scoop_size
-                if scoop_points > max_scoop_points and scoop_size <= max_scoop_size:
-                    max_scoop_points = scoop_points
-                    max_scoop_loc = (i, j)
+                if 0 < scoop_size <= max_scoop_size:
+                    if divide_by_scoop_size:
+                        scoop_points_per_unit = round_score(scoop_points / scoop_size)
 
-        return max_scoop_loc, max_scoop_points
+                        if scoop_points_per_unit == max_scoop_points_per_unit:
+                            if scoop_points > max_scoop_points:
+                                max_scoop_loc = (i, j)
+                                max_scoop_points = scoop_points
+                        elif scoop_points_per_unit > max_scoop_points_per_unit:
+                            max_scoop_loc = (i, j)
+                            max_scoop_points = scoop_points
+                            max_scoop_points_per_unit = scoop_points_per_unit
+                    else:
+                        if scoop_points > max_scoop_points:
+                            max_scoop_loc = (i, j)
+                            max_scoop_points = scoop_points
+        if divide_by_scoop_size:
+            return max_scoop_loc, max_scoop_points_per_unit
+        else:
+            return max_scoop_loc, max_scoop_points
 
     def get_player_approximate_fav(self, player_count, served) -> List[int]:
         player_approximate_fav = [0 for i in range(player_count)]
