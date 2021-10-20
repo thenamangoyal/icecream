@@ -4,7 +4,6 @@ import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
 
-
 class Player:
     def __init__(self, flavor_preference: List[int], rng: np.random.Generator, logger: logging.Logger) -> None:
         """Initialise the player with given preference.
@@ -18,6 +17,7 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = 0
+        self.turns = 0
 
     def get_highest_score(self,top_layer,curr_level):
         
@@ -91,6 +91,49 @@ class Player:
         #consider "similar" scores
         # print(score)
 
+    def get_unserved_players(self,get_player_count,get_served):
+        unserved_players = list()
+        players = [i for i in range(get_player_count())]
+        for player in players:
+            total_cells = np.sum(np.array([value for value in get_served()[player].values()]))
+            if total_cells<=(self.turns*24):
+                unserved_players.append(player)
+        return unserved_players
+
+    def cosine_similarity(self,a,b):
+        return np.dot(a,b)/(np.linalg.norm(a)*np.linalg.norm(b))
+
+    def get_most_similar_player(self,get_player_count,get_served,player_idx):
+        players = [i for i in range(get_player_count())]
+        players_feature_vector = list()
+        for player in players:
+            feature_vector = np.array([value for value in get_served()[player].values()])
+            feature_vector = feature_vector/np.sum(feature_vector)
+            players_feature_vector.append(feature_vector)
+        unserved_players = self.get_unserved_players(get_player_count,get_served)
+        self_feature_vector = players_feature_vector[player_idx]
+
+        most_similar_player = -1
+        similarity = -1
+        print('unserved_players:',unserved_players)
+        for unserved_player in unserved_players:
+            if unserved_player==player_idx:
+                continue
+            feature_vector = players_feature_vector[unserved_player]
+            cur_similarity = self.cosine_similarity(self_feature_vector,feature_vector)
+            print(cur_similarity)
+            if cur_similarity>similarity:
+                most_similar_player = unserved_player
+                similarity = cur_similarity
+
+        if most_similar_player == -1: #only ourself leave
+            return player_idx
+        else:
+            return most_similar_player
+
+
+
+
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
 
@@ -113,11 +156,14 @@ class Player:
         # print(f'Player 2 state -> {self.state}')
         if self.state == -1:
             action = "pass"
-            # other_player_list = list(range(0, get_player_count()))
-            # other_player_list.remove(player_idx)
-            # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
             self.state = 0 # reset for next turn
-            values = player_idx
+            if self.turns >0:
+                values = self.get_most_similar_player(get_player_count,get_served,player_idx)
+                print("Most similar player:",values)
+            else:
+                values = player_idx
+            self.turns+=1
+            #values = player_idx
         else:
             action = "scoop"
             values = self.get_highest_score(top_layer,curr_level)
