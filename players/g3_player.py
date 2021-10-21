@@ -117,7 +117,7 @@ class Player:
             permutations.append(player_preferences)
         for permutation in permutations:
             preferences = list(permutation)
-            if (len(player_preferences >2):
+            if (len(player_preferences >2)):
                 for i in range(3,len(player_preferences)):
                     preferences.append(player_preferences[i])
             score, permutation_dict[tuple(preferences)] = self.calculateBestScoopForEachPlayer(top_layer, curr_level, player_preferences, player_dict )
