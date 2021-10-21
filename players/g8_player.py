@@ -281,7 +281,7 @@ class Player:
                         next_unit_max_score = next_unit_score
                         final_units_taken = units_taken
                         ret = (i, j)
-        if final_units_taken == 0:
+        if final_units_taken == 0 and self.scooping_strategy == 2:
             self.scooping_strategy = 1
             ret, final_units_taken, max_score = self.get_max(top_layer, curr_level, preferences, curr_units_taken)
             self.scooping_strategy = 2
