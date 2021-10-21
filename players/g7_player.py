@@ -31,7 +31,7 @@ class Player:
 
         self.flavor_points[-1] = 0
 
-        self.move_scores = {}
+        self.move_scores = defaultdict(list)
         self.round = 1
         self.priority_moves = [] # to store cumulative moves
 
@@ -39,6 +39,7 @@ class Player:
         self.distribution = self.get_init_distribution()
 
         self.remaining_scoops = 24
+        self.scoop_numbers = defaultdict(list)
 
     def get_init_distribution(self):
         flavor_preference_len = len(self.flavor_preference)
@@ -144,34 +145,49 @@ class Player:
             cumulative_score += prev_num_unseen_cells * self.flavor_points[-2]
             num_scooped += prev_num_unseen_cells
             score = (cumulative_score / num_scooped) if num_scooped > 0 else 0
-            self.move_scores[-score] = (num_moves, num_scooped, i, j)
+            self.move_scores[-score].append((num_moves, num_scooped, i, j))
+
+            self.scoop_numbers[num_scooped].append((i,j))
+
             prev_num_unseen_cells = num_unseen_cells
 
-    def calculate_last_2(self):
-        scoops_scores = defaultdict(int)
-        scoop_info = {}
+    def should_not_take_scoop(self, scoop):
+        # true means shouldn't take scoop, false means it can
+        _, num_scooped, i, j = scoop
+        if self.remaining_scoops == num_scooped or self.remaining_scoops > 8:
+            return False
+        elif (self.remaining_scoops - num_scooped) % 4 == 3:
+            for s in self.scoop_numbers[3]:
+                si, sj = s
+                clear = False
+                if i < si - 1 or i > si + 1:
+                    clear = True
+                if j < sj - 1 or j > sj + 1:
+                    clear = True 
+                if clear:
+                    return False
+        elif (self.remaining_scoops - num_scooped) % 4 == 2:
+            for s in self.scoop_numbers[2]:
+                si, sj = s
+                clear = False
+                if i < si - 1 or i > si + 1:
+                    clear = True
+                if j < sj - 1 or j > sj + 1:
+                    clear = True 
+                if clear:
+                    return False
+        elif (self.remaining_scoops - num_scooped) % 4 == 1:
+            for s in self.scoop_numbers[1]:
+                si, sj = s
+                clear = False
+                if i < si - 1 or i > si + 1:
+                    clear = True
+                if j < sj - 1 or j > sj + 1:
+                    clear = True 
+                if clear:
+                    return False
 
-        for score in self.move_scores:
-            max_num_moves, max_scoop_cells, max_scoop_i, max_scoop_j = self.move_scores[score]
-
-            for s in range(1,8):
-                if s in scoop_info and s + max_scoop_cells <= self.remaining_scoops:
-                    other_s_info = scoop_info[s]
-                    if scoops_scores[s + max_scoop_cells] > scoops_scores[s] + score:
-                        scoops_scores[s + max_scoop_cells] = scoops_scores[s] * other_s_info[1] + score * max_scoop_cells
-                        if scoops_scores[s] * other_s_info[1] < score * max_scoop_cells:
-                            scoop_info[s + max_scoop_cells] = other_s_info
-                        else:
-                            scoop_info[s + max_scoop_cells] = self.move_scores[score]
-            
-            if max_scoop_cells <= self.remaining_scoops:
-                if max_scoop_cells not in scoop_info or scoops_scores[max_scoop_cells] * scoop_info[max_scoop_cells][1] > score * max_scoop_cells:
-                    scoops_scores[max_scoop_cells] = score * max_scoop_cells
-                    scoop_info[max_scoop_cells] = self.move_scores[score]
-        
-        for key,value in scoops_scores.items():
-            self.move_scores[value] = scoop_info[key]
-
+        return True
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int, get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]]) -> Dict[str, Union[Tuple[int], int]]:
         """Request what to scoop or whom to pass in the given step of the turn. In each turn the simulator calls this serve function multiple times for each step for a single player, until the player has scooped 24 units of ice-cream or asked to pass to next player or made an invalid request. If you have scooped 24 units of ice-cream in a turn then you get one last step in that turn where you can specify to pass to a player.
@@ -215,15 +231,23 @@ class Player:
                     self.updated_score(i, j, top_layer, curr_level)
 
             scores = list(self.move_scores.keys())
+
             if len(scores) == 0:
                 time_to_pass = True
             else:
                 heapq.heapify(scores)
                 max_score = heapq.heappop(scores)
-                max_num_moves, max_scoop_cells, max_scoop_i, max_scoop_j = self.move_scores[max_score]
-                while max_scoop_cells > remaining_scoops and len(scores) > 0:
-                    max_score = heapq.heappop(scores)
-                    max_num_moves, max_scoop_cells, max_scoop_i, max_scoop_j = self.move_scores[max_score]
+                self.move_scores[max_score].sort(key=lambda x: x[1], reverse=True)
+                scoop = self.move_scores[max_score].pop(0)
+                max_num_moves, max_scoop_cells, max_scoop_i, max_scoop_j = scoop
+
+                while (max_scoop_cells > remaining_scoops or self.should_not_take_scoop(scoop)) and len(scores) > 0:
+                    if len(self.move_scores[max_score]) == 0:
+                        del self.move_scores[max_score]
+                        max_score = heapq.heappop(scores)
+                        self.move_scores[max_score].sort(key=lambda x: x[1], reverse=True)
+                    scoop = self.move_scores[max_score].pop(0)
+                    max_num_moves, max_scoop_cells, max_scoop_i, max_scoop_j = scoop
 
                 if max_num_moves > 1:
                     max_scoop_cells = 0
@@ -239,9 +263,12 @@ class Player:
                         self.priority_moves.append((max_scoop_i, max_scoop_j))
 
         time_to_pass = (remaining_scoops == 0)
-        self.move_scores = {}
+        self.move_scores = defaultdict(list)
+        self.scoop_numbers = defaultdict(list)
 
         if time_to_pass or max_scoop_cells > remaining_scoops:
+            if remaining_scoops > 0:
+                print("Zoppa1")
             points = []
             served = get_served()
             turns = get_turns_received()
