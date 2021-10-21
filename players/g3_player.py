@@ -95,7 +95,15 @@ class Player:
             #temp.reverse()
             #last_player_pref = temp
             other_player_list = list(range(0, get_player_count()))
-            other_player_list.remove(player_idx)
+            # get_turns_received (Callable[[], List[int]]): method which returns a list of integers corresponding to each player, each element at index i tells how many turns a player with index i has played so far.
+            turns = get_turns_received()
+            most_turns = max(turns)
+            min_turns = min(turns)
+            if most_turns!=min_turns:
+                for i in range(0, len(turns)):
+                    if turns[i] == most_turns:
+                        other_player_list.remove(i)
+            #other_player_list.remove(player_idx)
             player_to_pass = self.calculateBestScoop(top_layer, curr_level, get_flavors, other_player_list, get_served, get_turns_received, last_player_pref)
             self.nextPlayerPreference = self.estimateNextScore(player_to_pass, top_layer, curr_level, get_served)
             values = player_to_pass
