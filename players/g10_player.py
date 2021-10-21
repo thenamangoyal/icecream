@@ -6,10 +6,21 @@ import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
 from random import choice
+from collections import defaultdict
 
 
 def round_score(num):
     return round(num, 4)
+
+
+def preference_distance(pref1, pref2):
+    pref1_dict = {flavor: index for index, flavor in enumerate(pref1)}
+    pref2_dict = {flavor: index for index, flavor in enumerate(pref2)}
+
+    distance = 0
+    for key in pref1_dict:
+        distance += abs(pref1_dict[key] - pref2_dict[key])
+    return distance
 
 
 class Player:
@@ -53,6 +64,30 @@ class Player:
                     flavor_cells.append(top_layer[i + i_offset, j + j_offset])
         return flavor_cells
 
+    def get_all_flavors_unseen(self, top_layer, get_served):
+        total_each_flavor = defaultdict(int)
+        for team in get_served():
+            for flavor in team:
+                total_each_flavor[flavor] += team[flavor]
+
+        for i in range(len(top_layer)):
+            for j in range(len(top_layer[0])):
+                if top_layer[i][j] != -1:
+                    total_each_flavor[top_layer[i][j]] += 1
+        return total_each_flavor
+
+    def flavors_left(self, total_each_favor, get_flavors):
+        flav_left = defaultdict(int)
+        num_flavors = len(get_flavors())
+        amount_of_each_flavor = (24 * 15 * 8) // num_flavors
+        for flavor in total_each_favor:
+            flav_left[flavor] = amount_of_each_flavor - total_each_favor[flavor]
+        return flav_left
+
+    def get_flavors_left_underneath(self, top_layer, get_served, get_flavors):
+        total_each_flavor = self.get_all_flavors_unseen(top_layer, get_served)
+        return self.flavors_left(total_each_flavor, get_flavors)
+
     def find_max_scoop(self, top_layer, curr_level, flavor_preference, max_scoop_size, divide_by_scoop_size=True):
         max_scoop_loc = (0, 0)
         max_scoop_points_per_unit = 0
@@ -76,10 +111,8 @@ class Player:
                         if scoop_points > max_scoop_points:
                             max_scoop_loc = (i, j)
                             max_scoop_points = scoop_points
-        if divide_by_scoop_size:
-            return max_scoop_loc, max_scoop_points_per_unit
-        else:
-            return max_scoop_loc, max_scoop_points
+
+        return max_scoop_loc, max_scoop_points
 
     def get_player_approximate_fav(self, player_count, served) -> List[int]:
         player_approximate_fav = [0 for i in range(player_count)]
