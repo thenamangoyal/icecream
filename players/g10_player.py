@@ -1,11 +1,15 @@
 import math
 import random
-
+import operator
 import numpy as np
 import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
 from random import choice
+
+
+def round_score(num):
+    return round(num, 4)
 
 
 class Player:
@@ -23,6 +27,7 @@ class Player:
         self.state = None
         self.curr_turn = 0
         self.num_units_in_turn = 0
+        #self.player_bowl_snapshot = None
 
     def calc_flavor_points(self, flavors_scooped, flavor_preference):
         total = 0
@@ -44,21 +49,37 @@ class Player:
         for i_offset in range(2):
             for j_offset in range(2):
                 current_level = curr_level[i + i_offset, j + j_offset]
-                if current_level > 0 and current_level == max_level:
+                if current_level >= 0 and current_level == max_level:
                     flavor_cells.append(top_layer[i + i_offset, j + j_offset])
         return flavor_cells
 
-    def find_max_scoop(self, top_layer, curr_level, flavor_preference, max_scoop_size):
+    def find_max_scoop(self, top_layer, curr_level, flavor_preference, max_scoop_size, divide_by_scoop_size=True):
         max_scoop_loc = (0, 0)
+        max_scoop_points_per_unit = 0
         max_scoop_points = 0
         for i in range(len(top_layer) - 1):
             for j in range(len(top_layer[0]) - 1):
                 scoop_points, scoop_size = self.calc_scoop_points(i, j, curr_level, top_layer, flavor_preference)
-                if scoop_points > max_scoop_points and scoop_size <= max_scoop_size:
-                    max_scoop_points = scoop_points
-                    max_scoop_loc = (i, j)
+                if 0 < scoop_size <= max_scoop_size:
+                    if divide_by_scoop_size:
+                        scoop_points_per_unit = round_score(scoop_points / scoop_size)
 
-        return max_scoop_loc
+                        if scoop_points_per_unit == max_scoop_points_per_unit:
+                            if scoop_points > max_scoop_points:
+                                max_scoop_loc = (i, j)
+                                max_scoop_points = scoop_points
+                        elif scoop_points_per_unit > max_scoop_points_per_unit:
+                            max_scoop_loc = (i, j)
+                            max_scoop_points = scoop_points
+                            max_scoop_points_per_unit = scoop_points_per_unit
+                    else:
+                        if scoop_points > max_scoop_points:
+                            max_scoop_loc = (i, j)
+                            max_scoop_points = scoop_points
+        if divide_by_scoop_size:
+            return max_scoop_loc, max_scoop_points_per_unit
+        else:
+            return max_scoop_loc, max_scoop_points
 
     def get_player_approximate_fav(self, player_count, served) -> List[int]:
         player_approximate_fav = [0 for i in range(player_count)]
@@ -66,6 +87,64 @@ class Player:
             player_approximate_fav[i] = max(served[i], key=served[i].get) - 1
         # adjusted to reflect 0 index
         return player_approximate_fav
+
+    def get_player_score(self, top_layer_flavour_count, player_preference) :
+        score = 0
+        flavor_preference = {}
+        for i in range(len(player_preference)) :
+            (key,val) = player_preference[i]
+            flavor_preference[key] = i
+        #print("flavour pref : ", flavor_preference)
+        for i in range(len(top_layer_flavour_count)):
+            score+=top_layer_flavour_count[i]*flavor_preference[i+1]
+                
+        #print("score = ", score)
+        return score
+
+    def get_player_preferences(self, top_layer, player_count, served, turns_received, available_players) -> List[List[int]]:
+        #asc order -> max preferred flavour at max index
+        #print("serving details : ", served)
+        player_preferences = [sorted(d.items(), key=operator.itemgetter(1)) for d in served]
+        max_score = 0
+        select = -1
+        estimated_score = []
+        magic_percentage = 0.1
+        top_layer_flavour_count = self.get_top_layer_flavour_count(top_layer)
+        for i in range(len(player_preferences)):
+            if i in available_players :
+                score = self.get_player_score(top_layer_flavour_count,player_preferences[i])
+                estimated_score.append(score)
+                if score > max_score :
+                    max_score = score
+
+        max_score *= magic_percentage
+        select_players = []
+        for i in range(len(estimated_score)) :
+            if estimated_score[i] >= max_score :
+                select_players.append(available_players[i])
+
+        flavour_count = len(self.flavor_preference)
+        our_flavour_preference = set(self.flavor_preference[:flavour_count//2:])
+        same_preference_count = 0
+        for sp in select_players :
+            sp_flavour_preferences = []
+            for (flavour, count) in player_preferences[sp][flavour_count//2::] :
+                sp_flavour_preferences.append(flavour)
+            sp_flavour_preferences = set(sp_flavour_preferences)
+            temp = len(our_flavour_preference.intersection(sp_flavour_preferences))
+            if temp > same_preference_count :
+                select = sp
+                same_preference_count = temp
+
+        if same_preference_count == 0 :
+            if len(select_players) > 0 :
+                select = select_players[0]
+            else :
+                select = -1
+
+        # adjusted to reflect 0 index
+        return select
+
 
     def get_top_layer_flavour_count(self, top_layer: np.ndarray) -> List[int]:
         top_layer_flavour_count = [0 for x in self.flavor_preference]
@@ -78,6 +157,27 @@ class Player:
 
         # 0 indexed
         return top_layer_flavour_count
+
+    def return_optimal_pass(self, get_turns_received, get_player_count, get_served, player_idx, top_layer):
+        action = "pass"
+        turns_received = get_turns_received()
+        curr_iteration = turns_received[player_idx]
+        last_iteration = 120//get_player_count()
+        available_players = [i for i in range(len(turns_received)) if turns_received[i] < curr_iteration]
+        # print("pass available for : ", available_players)
+        #if len(available_players) == 0 and curr_iteration==last_iteration-1:
+        #    values = player_idx
+        if len(available_players) == 0:
+            available_players = [i for i in range(len(turns_received))]
+            values = self.get_player_preferences(top_layer, get_player_count(), get_served(), turns_received,
+                                                 available_players)
+        elif len(available_players) == 1:
+            values = available_players[0]
+        else :
+            values = self.get_player_preferences(top_layer, get_player_count(), get_served(), turns_received,
+                                                 available_players)
+
+        return action, values
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
               get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int],
@@ -105,60 +205,18 @@ class Player:
             self.curr_turn = get_turns_received()[player_idx]
 
         if self.num_units_in_turn >= 24:
-            '''other_player_list = list(range(0, get_player_count()))
-            other_player_list.remove(player_idx)
-            next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
-            values = next_player'''
-
-            not_next = 1
-            #####available_players = [i for i in range(len(turns_received)) if turns_received[i]<curr_iteration]
-
-            # calculate which flavour the top layer has the most,
-            # store the value if less than 24 or store 24, since in one turn, player can only scoop 24
-            top_layer_flavour_count = self.get_top_layer_flavour_count(top_layer)
-            max_same_flavour = max(top_layer_flavour_count)
-            max_same_flavour = min(24, max_same_flavour)
-
-            # get topmost preference of the player = estimated as the flavour having most units in player's bowl
-            player_approximate_fav = self.get_player_approximate_fav(get_player_count(), get_served())
-
-            # check which players are available to pass to and record their index and favorite flavor
-            available_player_fav = [(i, player_approximate_fav[i]) for i in range(len(player_approximate_fav)) if
-                                    get_turns_received()[i] < self.curr_turn]
-            self.logger.info("available player fav is {}".format(available_player_fav))
-            self.logger.info("length of available player fav is {}".format(len(available_player_fav)))
-
-             # our top half favorite flavors (floor)
-            our_favs = self.flavor_preference[:(len(self.flavor_preference) // 2)]
-            self.logger.info("our top half favs are {}".format(our_favs))
-
-            # calculate a list of no conflict, available players in hope to maximize our score first before we consider other members
-            no_conflict_player_fav = []
-            for player, flavour in available_player_fav:
-                if flavour not in our_favs:
-                    no_conflict_player_fav.append((player, flavour))
-            self.logger.info("no conflict player fav is {}".format(no_conflict_player_fav))
-            self.logger.info("length of no conflict player fav is {}".format(len(no_conflict_player_fav)))
-
-            # randomly select a player if while logic doesn't work
-            if len(available_player_fav) > 0:
-                values, flavour = choice(available_player_fav)
-            else:  # we are the last member to serve in this round, pass to a random member to start the next round
-                # don't want to pass to ourselves cause we should have almost exhausted our most favorite flavors on top level
-                values = random.randint(0, len(get_served()))
-
-            # take a player for the available players and check if their favorite flavour has 24 units
-            # or less depending on max_same_flavour, if yes pass to that player, try to maximize family members score if no conflict
-            while not_next and len(no_conflict_player_fav) > 0:
-                player, flavour = no_conflict_player_fav.pop()
-                if top_layer_flavour_count[flavour] >= max_same_flavour:
-                    values = player
-
-            action = "pass"
-            values = values
+            action, values = self.return_optimal_pass(get_turns_received, get_player_count, get_served, player_idx, top_layer)
+            # print("selected values : ", values)
+            #print("top layer was :", self.get_top_layer_flavour_count(top_layer))
         else:
             action = "scoop"
-            values = self.find_max_scoop(top_layer, curr_level, self.flavor_preference, 24 - self.num_units_in_turn)
-            self.num_units_in_turn += len(self.get_flavor_cells_from_scoop(values[0], values[1], curr_level, top_layer))
+            values, points = self.find_max_scoop(top_layer, curr_level, self.flavor_preference, 24 - self.num_units_in_turn, divide_by_scoop_size=True)
 
+            #If no scoop was found, pass it
+            if points == 0:
+                action, values = self.return_optimal_pass(get_turns_received, get_player_count, get_served, player_idx, top_layer)
+            else:
+                self.num_units_in_turn += len(self.get_flavor_cells_from_scoop(values[0], values[1], curr_level, top_layer))
+
+        #self.player_bowl_snapshot = get_served()
         return {"action": action, "values": values}
