@@ -93,7 +93,7 @@ class Player:
         next_serve_dict = get_served()
         self.update_preferences(next_serve_dict)
         self.learning_rate = self.step_decay(max_turn)
-        players_not_served = [p_id for p_id in range(get_player_count()) if p_id not in players_served]
+        players_not_served = [p_id for p_id in range(get_player_count()) if p_id not in players_served and p_id != player_idx]
         other_player_list = list(range(0, get_player_count()))
         other_player_list.remove(player_idx)
         # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
@@ -281,4 +281,9 @@ class Player:
                         next_unit_max_score = next_unit_score
                         final_units_taken = units_taken
                         ret = (i, j)
+        if final_units_taken == 0:
+            self.scooping_strategy = 1
+            ret, final_units_taken, max_score = self.get_max(top_layer, curr_level, preferences, curr_units_taken)
+            self.scooping_strategy = 2
+            return ret, final_units_taken, max_score
         return ret, final_units_taken, max_score
