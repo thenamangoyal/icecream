@@ -45,16 +45,48 @@ class Player:
         flavor_preference_len = len(self.flavor_preference)
         return [self.total_cells / flavor_preference_len] * flavor_preference_len
 
-    def get_distribution(self, served, top_layer):
-        # index of distribution corresopnds to flavor with value i + 1
-        self.distribution = self.get_init_distribution()
+    def get_surface_flavors(self, top_layer):
+        flavor_count = [0] * len(self.flavor_preference)
         for row in top_layer:
             for val in row:
                 if val > 0:
-                    self.distribution[val - 1] -= 1
+                    flavor_count[val - 1] += 1
+        return flavor_count
+
+    def get_distribution(self, served, top_layer):
+        # index of distribution corresopnds to flavor with value i + 1
+        self.distribution = self.get_init_distribution()
+        surface_counts = self.get_surface_flavors(top_layer)
+        for index, value in enumerate(surface_counts):
+            self.distribution[index] -= value
         for player in served:
             for flavor, consumed in player.items():
                 self.distribution[flavor - 1] -= consumed
+
+    def get_expected_user_score_of_surface_flavors(self, player_preferences, top_layer):
+        # here we assume player_preferences returns [flavor_3, flavor_2, flavor_1], where the expected score
+        # for each flavor is len(flavor_prefs) - index
+        surface_flavor_count = self.get_surface_flavors(top_layer) # an array of flavors [flavor_1_ct, flavor_2_ct]
+        n = len(player_preferences)
+        expected_score = 0
+        for i in range(n):
+            flavorIdx = player_preferences[i] - 1
+            expected_score += surface_flavor_count[flavorIdx] * (n - flavorIdx)
+        return expected_score
+
+    def get_best_pass(self, playerCount, top_layer):
+        bestPlayerToPass = None
+        bestExpectedScore = -1
+        for playerIdx in range(playerCount):
+            '''
+            player_prefs = get_flavor_preferences(playerIdx)
+            exp_score = self.get_expected_user_score_of_surface_flavors(player_prefs, top_layer)
+            if exp_score > bestExpectedScore:
+                bestExpectedScore = exp_score
+                bestPlayerToPass = playerIdx
+            '''
+            pass
+        return bestPlayerToPass
 
     def update_hidden_cell_expectation(self, served, top_layer):
         self.get_distribution(served, top_layer)
