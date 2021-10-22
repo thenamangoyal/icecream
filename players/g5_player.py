@@ -96,7 +96,7 @@ class Player:
                     for y in [0, 1]:
                         if curr_level[i+x, j+y] == topmost_level:
                             num_scoops += 1
-                            curr_score += prefs.index(top_layer[i+x, j+y])
+                            curr_score += prefs.index(top_layer[i+x, j+y]) + 1
                 curr_score /= num_scoops
                 total_score[i, j] = curr_score
 
@@ -115,6 +115,7 @@ class Player:
         # Each flavour is assigned the score as its index in player preferences
         best_score = 0
         best_num_scoops = 0
+        best_layer = -1
         # -1 to prevent index out of bounds
         for i in range(top_layer.shape[0]-1):
             for j in range(top_layer.shape[1]-1):
@@ -127,7 +128,7 @@ class Player:
                     for y in [0, 1]:
                         if curr_level[i+x, j+y] == topmost_level:
                             num_scoops += 1
-                            curr_score += self.reverse_preference.index(top_layer[i+x, j+y])
+                            curr_score += self.reverse_preference.index(top_layer[i+x, j+y]) + 1
                 curr_score /= num_scoops
 
                 if num_scoops > max_num_scoops:
@@ -138,6 +139,15 @@ class Player:
                     best_score = curr_score
                     best_i = i
                     best_j = j
+                    best_layer = topmost_level
+                
+                elif curr_score == best_score:
+                    if topmost_level > best_layer:
+                        best_num_scoops = num_scoops
+                        best_score = curr_score
+                        best_i = i
+                        best_j = j
+                        best_layer = topmost_level
 
         return best_i, best_j, best_num_scoops
 
