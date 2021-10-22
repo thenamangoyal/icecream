@@ -20,15 +20,19 @@ class Player:
         self.logger = logger
         self.state = None
         self.preference_estimate = None
-        self.learning_rate = 0.8  # This determines how much of new information we trust
+        self.learning_rate = 0.7  # This determines how much of new information we trust
         self.curr_units_taken = 0
         self.prev_serve_dict = None
         self.decay = None
         self.player_idx = None
+        self.iteration_drop = None
+        self.num_turns = None
+        self.preference_initialize = None
+        self.alpha_weight = 0.7
 
         # 1 : Greedy strategy
         # 2 : 'Altruistic' greedy strategy (Check if someone else enjoys a scoop more before scooping)
-        self.scooping_strategy = 2
+        self.scooping_strategy = 1
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
               get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int],
@@ -59,23 +63,64 @@ class Player:
             {"action": "pass",  "values" : i} pass to next player with index i
         """
 
-        # Create a random preference for each player; this will only happen in the very beginning
-        # a list of list
+        # This will only happen in the second around
+        if max(get_turns_received()) == 2 and not all(self.preference_initialize):
+            # print("in second turn")
+            serve_dict = get_served()
+            for p_id, is_initialized in enumerate(self.preference_initialize):
+                if not is_initialized:
+                    cumulative = serve_dict[p_id]
+                    cumulative_flavor_estimate = sorted(range(self.flavor_range[0], self.flavor_range[1] + 1),
+                                                        key=lambda k: -cumulative[k])
+                    self.preference_estimate[p_id] = cumulative_flavor_estimate
+                    self.preference_initialize[p_id] = True
+            # for idx, l in enumerate(self.preference_estimate):
+            #     print("Group ", idx + 1)
+            #     print(l)
+
+        # This will only happen in the first round
         if not self.preference_estimate:
+            # Random permutation for preference estimate
             self.preference_estimate = [self.rng.permutation(self.flavor_preference).tolist() for _ in
                                         range(get_player_count())]
+            self.preference_initialize = [False] * get_player_count()
+
+            # If we are not the first group to scoop for the first time
+            if sum(get_turns_received()) != 1:
+                turns_num = get_turns_received()
+                max_turn = max(turns_num)
+                players_served = [p_id for p_id, turn in enumerate(turns_num) if p_id != player_idx and turn == max_turn]
+                # We can get a more accurate estimate on the preferences on player who has been served first
+                # This will overwrite the previous random permutation on estimate
+                # Using player's cumulative units of ice cream to predict only happens once in the beginning
+                serve_dict = get_served()
+                for p_id in players_served:
+                    cumulative = serve_dict[p_id]
+                    cumulative_flavor_estimate = sorted(range(self.flavor_range[0], self.flavor_range[1] + 1), key=lambda k: -cumulative[k])
+                    self.preference_estimate[p_id] = cumulative_flavor_estimate
+                    self.preference_initialize[p_id] = True
+
         if not self.player_idx:
             self.player_idx = player_idx
             self.preference_estimate[self.player_idx] = self.flavor_preference
+
         # Create a previous serve dictionary that stores the cumulative units served for each player
         # Same structure what get_served returns
         if not self.prev_serve_dict:
             self.prev_serve_dict = [{f: 0 for f in range(self.flavor_range[0], self.flavor_range[1] + 1)} for _ in
                                     range(get_player_count())]
 
+        if not self.num_turns:
+            self.num_turns = 120 // get_player_count()
+
         if not self.decay:
-            num_turns = 120 // get_player_count()
-            self.decay = self.learning_rate / num_turns
+            self.decay = self.learning_rate / self.num_turns
+
+        if not self.iteration_drop:
+            if self.num_turns <= 15:
+                self.iteration_drop = 1
+            else:
+                self.iteration_drop = 2
 
         # Try to scoop if we can scoop more
         if self.curr_units_taken < 24:
@@ -88,21 +133,49 @@ class Player:
         # Pass to another player if the scoop failed or we cannot scoop anymore
         action = "pass"
         turns_num = get_turns_received()
+        # print(turns_num, "turn num")
         max_turn = max(turns_num)
         players_served = [p_id for p_id, turn in enumerate(turns_num) if p_id != player_idx and turn == max_turn]
         next_serve_dict = get_served()
         self.update_preferences(next_serve_dict)
-        self.learning_rate = self.step_decay(max_turn)
+        self.learning_rate = self.step_decay(min(turns_num))
+        self.alpha_weight = self.step_decay(min(turns_num))
         players_not_served = [p_id for p_id in range(get_player_count()) if p_id not in players_served and p_id != player_idx]
-        other_player_list = list(range(0, get_player_count()))
-        other_player_list.remove(player_idx)
-        # next_player = other_player_list[self.rng.integers(0, len(other_player_list))]
         if len(players_not_served) == 0:
-            players_not_served = range(get_player_count())
+            players_not_served = list(range(get_player_count()))
+            players_not_served.remove(player_idx)
         next_player = self.choose_player(top_layer, curr_level, players_not_served)
         values = next_player
         self.curr_units_taken = 0
-        self.prev_serve_dict = next_serve_dict
+        # for idx, l in enumerate(self.preference_estimate):
+        #     print("Group ", idx + 1)
+        #     print(l)
+        #     prev_cum = self.prev_serve_dict[idx]
+        #     cur_cum = next_serve_dict[idx]
+        #     print("prev", prev_cum)
+        #     print("cur", cur_cum)
+        #     cumulative = next_serve_dict[idx]
+        #     cumulative_flavor_estimate = sorted(range(self.flavor_range[0], self.flavor_range[1] + 1), key=lambda k: -cumulative[k])
+        #     print("cur cumu estimate", cumulative_flavor_estimate)
+        #     turn_differences = self.compute_turn_differences(prev_cum, cur_cum)
+        #     print("turn diff", turn_differences)
+        #     print("turn estimate")
+        #     print(sorted(range(1, len(turn_differences) + 1), key=lambda k: -turn_differences[k - 1]))
+        #
+        # if max_turn == 4:
+        #     print("Start debug")
+        #
+        # if max_turn == 8:
+        #     print("debug 2")
+        # self.prev_serve_dict = next_serve_dict
+        if max_turn == 20:
+            print(player_idx)
+
+            for idx, l in enumerate(self.preference_estimate):
+                print("Group ", idx + 1)
+                print(l)
+                print(get_served()[idx], sum(get_served()[idx].values()))
+
         return {"action": action, "values": values}
 
     def update_preferences(self, new_serve_dict) -> None:
@@ -110,14 +183,16 @@ class Player:
             if player_id == self.player_idx:
                 continue
             turn_differences = self.compute_turn_differences(prev, curr)
-            total = new_serve_dict[player_id]
+            # If the current player has not been served, no info update
+            if sum(turn_differences) == 0:
+                continue
+            # print("Group ", player_id + 1)
             turn_flavor_estimate = sorted(range(1, len(turn_differences) + 1), key=lambda k: -turn_differences[k - 1])
-            # turn_weighted_results = self.compute_turn_weighted_results(turn_differences, total)
-            # self.preference_estimate[player_id] = sorted(range(len(turn_weighted_results)),
-            #                                              key=lambda k: turn_weighted_results[k], reverse=True)
-            # self.preference_estimate[player_id] = [val + 1 for val in self.preference_estimate[player_id]]
+            cumulative = new_serve_dict[player_id]
+            cumulative_flavor_estimate = sorted(range(self.flavor_range[0], self.flavor_range[1] + 1), key=lambda k: -cumulative[k])
+            weighted_estimate = self.compute_new_estimate(turn_flavor_estimate, cumulative_flavor_estimate, alpha=self.alpha_weight)
             self.preference_estimate[player_id] = self.compute_new_estimate(self.preference_estimate[player_id],
-                                                                            turn_flavor_estimate)
+                                                                            weighted_estimate)
 
     def learning_rate_decay(self, iteration, learning_rate=None):
 
@@ -132,17 +207,18 @@ class Player:
 
         return learning_rate / (1.0 + self.decay * iteration)
 
-    def step_decay(self, iteration, initial=0.8):
+    def step_decay(self, iteration, initial=0.7, drop=0.8):
         '''
         drops the learning rate by a factor every few iterations
         :param learning_rate: Current learning rate
         :param iteration: int, Current turn
+        :param initial: float, initial learning rate
+        :param drop: float, keep percentage
         :return: float, new learning rate
         '''
 
-        drop = 0.5
-        iteration_drop = 10
-        lr = initial * math.pow(drop, math.floor((1+iteration)/iteration_drop))
+        lr = initial * math.pow(drop, math.floor((1+iteration)/self.iteration_drop))
+        # print("New Learning rate ", lr)
         return lr
 
     def compute_turn_differences(self, prev_serve, curr_serve) -> List[int]:
@@ -156,33 +232,25 @@ class Player:
 
         return [curr_serve[f] - prev_serve[f] for f in range(self.flavor_range[0], self.flavor_range[1] + 1)]
 
-    def compute_new_estimate(self, old_estimate, new_estimate):
+    def compute_new_estimate(self, old_estimate, new_estimate, alpha=None):
 
         '''
         Computer new estimate based on old estimate and our newly computed estimate from the current turn
         :param old_estimate: A list of flavors (ints) (Most preferred on the left)
         :param new_estimate: A list of flavors (ints) (Most preferred on the left)
+        :param alpha: Learning rate
         :return: A list of flavors (ints) (most preferred on the left)
         '''
+
+        if not alpha:
+            alpha = self.learning_rate
+
         flavor_to_idx = [0] * len(old_estimate)
         for old_idx, flavor in enumerate(old_estimate):
             new_idx = new_estimate.index(flavor)
-            flavor_to_idx[flavor - 1] = self.learning_rate * new_idx + (1 - self.learning_rate) * old_idx
-
+            flavor_to_idx[flavor - 1] = alpha * new_idx + (1 - alpha) * old_idx
         idx_to_flavor = sorted(range(1, len(old_estimate) + 1), key=lambda x: flavor_to_idx[x - 1])
         return idx_to_flavor
-
-    def compute_turn_weighted_results(self, differences, total) -> List[int]:
-
-        '''
-        Helper method that computes a weighted preference value for each flavor using a weight a, where value = a * total + (1-a) * differences
-        :param differences: a list of int (0-indexed) indicating what flavor the player took since last turn
-        :param total: a list of int (0-indexed) indicating what flavors the player has taken in total
-        :return: a list of int (0-indexed) indicating flavor score
-        '''
-
-        return [((self.learning_rate * total[f]) + ((1.0 - self.learning_rate) * differences[f])) for f in
-                range(self.flavor_range[0] - 1, self.flavor_range[1])]
 
     def choose_player(self, top_layer, curr_level, players_not_served) -> int:
 
@@ -210,6 +278,7 @@ class Player:
                 next_player = player
                 best_score = curr_player_score
         return next_player
+
 
     def get_unit_score(self, flavor, preferences):
         return len(preferences) - preferences.index(flavor)
