@@ -56,8 +56,7 @@ class PlayerLoggingFilter(logging.Filter):
 
 
 class IceCreamGame():
-    def __init__(self, args):
-        self.args = args
+    def __init__(self, player_list, args):
         self.use_gui = not(args.no_gui)
         if not self.use_gui:
             self.use_timeout = not(args.disable_timeout)
@@ -66,7 +65,7 @@ class IceCreamGame():
         
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
-        self.log_dir = os.path.join(root_dir, 'log')
+        self.log_dir = os.path.abspath(args.log_dir)
         os.makedirs(self.log_dir, exist_ok=True)
         # create file handler which logs even debug messages
         fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
@@ -82,12 +81,12 @@ class IceCreamGame():
 
         if args.seed == 0:
             args.seed = None
-            self.logger.debug("Initialise random number generator with no seed")
+            self.logger.info("Initialise random number generator with no seed")
         else:
-            self.logger.debug("Initialise random number generator with {} seed".format(args.seed))
+            self.logger.info("Initialise random number generator with {} seed".format(args.seed))
         self.rng = np.random.default_rng(args.seed)
         if args.flavors == 0:
-            self.logger.debug("Using random number of flavors")
+            self.logger.info("Using random number of flavors")
             rand_num_flavors_idx = self.rng.integers(0, len(constants.num_flavor_choices))
             args.flavors = constants.num_flavor_choices[rand_num_flavors_idx]
         self.ice_cream_container = IceCreamContainer(self.rng, self.logger, num_flavors=args.flavors)
@@ -111,15 +110,7 @@ class IceCreamGame():
         self.max_allowed_per_turn = constants.max_allowed_per_turn
         self.total_turn_per_player = -1
 
-        self.__add_player(G1_Player, "Group 1")
-        self.__add_player(G2_Player, "Group 2")
-        self.__add_player(G3_Player, "Group 3")
-        self.__add_player(G4_Player, "Group 4")
-        self.__add_player(G5_Player, "Group 5")
-        self.__add_player(G7_Player, "Group 7")
-        self.__add_player(G8_Player, "Group 8")
-        self.__add_player(G9_Player, "Group 9")
-        self.__add_player(G10_Player, "Group 10")
+        self.__add_players(player_list)
 
         self.next_player = self.__assign_next_player()
         self.processing_turn = False
@@ -130,12 +121,43 @@ class IceCreamGame():
             start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, args.automatic))
         else:
             self.logger.debug("No GUI flag specified")
-            self.play_all()
+
+    def get_state(self):
+        return_dict = dict()
+        for val in ["player_names", "player_preferences", "served", "time_taken", "turns_received", "timeout_count", "error_count", "player_scores"]:
+            return_dict[val] = getattr(self, val)
+        return return_dict
 
     def __log(self, message, label_num=0):
         self.logger.debug(message)
         if self.use_gui:
             self.ice_cream_app.set_label_text(message, label_num)
+    
+
+    def __add_players(self, player_list):
+        player_count = dict()
+        for player_name in player_list:
+            if player_name not in player_count:
+                player_count[player_name] = 0
+            player_count[player_name] += 1
+        
+        count_used = {k:0 for k in player_count}
+        for player_name in player_list:
+            if player_name in constants.possible_players:
+                if player_name.lower() == "r":
+                    player_class = Random_Player
+                    base_player_name = "Random"
+                else:
+                    player_class = eval("G{}_Player".format(player_name))
+                    base_player_name = "Group {}".format(player_name)
+                count_used[player_name] += 1
+                if player_count[player_name] == 1:
+                    self.__add_player(player_class, "{}".format(base_player_name))
+                else:
+                    self.__add_player(player_class, "{}.{}".format(base_player_name, count_used[player_name]))
+            else:
+                self.logger.error("Failed to insert player {} since invalid player name provided.".format(player_name))
+
 
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
@@ -153,7 +175,7 @@ class IceCreamGame():
             self.player_scores.append(0)
             self.total_turn_per_player = math.floor(constants.max_total_turns / len(self.players))
         else:
-            self.logger.debug("Failed to insert player as another player with name {} exists.".format(player_name))
+            self.logger.error("Failed to insert player as another player with name {} exists.".format(player_name))
 
     def __get_player_logger(self, player_name):
         player_logger = logging.getLogger("{}.{}".format(__name__, player_name))
@@ -629,6 +651,12 @@ if __name__ == '__main__':
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
     parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
+    parser.add_argument("--log_dir", default="log", help="Path to dump log files")
     parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout in non GUI mode")
     args = parser.parse_args()
-    ice_cream_game = IceCreamGame(args)
+    player_list = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
+    
+    ice_cream_game = IceCreamGame(player_list, args)
+    if not ice_cream_game.use_gui:
+        ice_cream_game.play_all()
+        # ice_cream_game.get_state()
