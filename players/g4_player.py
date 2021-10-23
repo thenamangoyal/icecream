@@ -113,63 +113,6 @@ class Player:
             'current_turn_served': 0
         }
 
-    @staticmethod
-    def scoop_value(flavor_preference, top_layer, curr_level, x, y):
-        """Helper function: returns the value the player gets for a scoop at index x,y"""
-        d = max(curr_level[x, y], curr_level[x+1, y], curr_level[x, y+1], curr_level[x+1, y+1])
-        try:
-            if d >= 0:
-                units = 0
-                flav_total = 0
-                if curr_level[x+1, y] == d:
-                    flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x,y]) + 1
-                    units += 1
-                if curr_level[x+1, y] == d:
-                    flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y]) + 1
-                    units += 1
-                if curr_level[x, y+1] == d:
-                    flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x,y+1]) + 1
-                    units += 1
-                if curr_level[x+1, y+1] == d:
-                    flav_total += len(flavor_preference) - flavor_preference.index(top_layer[x+1,y+1]) + 1
-                    units += 1
-                return (flav_total, (x, y), units)
-        except ValueError:
-            # No knowledge of player's preference for some value
-            pass
-        return (0, (x,y), 0)
-
-    @staticmethod
-    def score_available_scoops(flavor_preference, top_layer, curr_level):
-        p_queue_1 = []
-        p_queue_2 = []
-        p_queue_3 = []
-        p_queue_4 = []
-        # Subtract one from length since 2x2 "spoon" must remain in container
-        for x in range(0, top_layer.shape[0]-1):
-            for y in range(0, top_layer.shape[1]-1):
-                scoop = Player.scoop_value(flavor_preference, top_layer, curr_level, x, y)
-                if scoop[2] == 1:
-                    p_queue_1.append(scoop)
-                elif scoop[2] == 2:
-                    p_queue_2.append(scoop)
-                elif scoop[2] == 3:
-                    p_queue_3.append(scoop)
-                elif scoop[2] == 4:
-                    p_queue_4.append(scoop)
-        # TODO (etm): If we care, we can use an actual heap / priority queue
-        p_queue_1.sort()
-        p_queue_2.sort()
-        p_queue_3.sort()
-        p_queue_4.sort()
-        return p_queue_4, p_queue_1, p_queue_2, p_queue_3
-
-    @staticmethod
-    def no_overlap(x1, y1, x2, y2):
-        if abs(x1 - x2) <= 1 and abs(y1 - y2) <= 1:
-            return False
-        return True
-
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
           get_flavors: Callable[[], List[int]],
           get_player_count: Callable[[], int], get_served: Callable[[], List[Dict[int, int]]],
@@ -221,12 +164,12 @@ class Player:
         # if there is still more ice-cream to take, make a scoop
         if self.state['current_turn_served'] < 24:
             action = "scoop"
-            _, scoop = self.choose_best_scoop_combination(top_layer, curr_level).pop()
+            _, scoop = self.choose_best_scoop_combination(top_layer, curr_level, self.state[CURRENT_TURN_SERVED]).pop()
             self.state['current_turn_served'] += scoop.actual_size
             values = scoop.loc
         else:
             self.state['current_turn_served'] = 0
-            next_player = Player.best_player_to_pass_to(player_idx, get_player_count(), top_layer, curr_level, get_served, get_flavors, get_turns_received())
+            next_player = self.best_player_to_pass_to(get_player_count(), top_layer, curr_level, get_served, get_flavors, get_turns_received())
             action = "pass"
             values = next_player
 
@@ -235,29 +178,33 @@ class Player:
 
         return {"action": action, "values": values}
 
-    @staticmethod
-    def best_player_to_pass_to(self_ix, n_players, top_layer, curr_level, get_served, get_flavors, turns_received):
+    def best_player_to_pass_to(self, n_players, top_layer, curr_level, get_served, get_flavors, turns_received):
         # list of all players except ourself and those who have had more turns than the current min
         players = []
         min_received = np.amin(turns_received)
         for i in range(n_players):
-            if i != self_ix and turns_received[i] == min_received:
+            if turns_received[i] == min_received:
                 players.append(i)
 
-        max_player = players[0]
+        max_player = players[self.rng.integers(low=0, high=len(players), size=1)[0]]
         max_score = 0
         for player in players:
             p_score = 0
             player_pref = Player.guess_player_pref_from_bowl(player, get_served(), get_flavors())
-            # TODO (etm):
-            #   This is a crude approximation since some scoops will contain chunks of
-            #   other scoops. We need a better way to update the game state
-            p_queue = Player.score_available_scoops(player_pref, top_layer, curr_level)[0]
+
+            units_scooped = 0
             for _ in range(24):
-                if len(p_queue) == 0:
+                if units_scooped == 24:
                     break
-                score, _, _ = p_queue.pop()
-                p_score += score
+                exclude = set()
+                scoop_list = self.choose_best_scoop_combination(top_layer, curr_level, units_scooped, player_pref, exclude)
+                if scoop_list is None:
+                    break
+                _, best_scoop = scoop_list.pop()
+                p_score += best_scoop.score(player_pref)
+                units_scooped += best_scoop.actual_size
+                exclude.update(self.scoop_unit_coordinates(best_scoop.loc))
+
             if p_score > max_score:
                 max_score = p_score
                 max_player = player
@@ -286,87 +233,6 @@ class Player:
         pref_ranking += [0] * (len(flavors) - len(pref_ranking))
 
         return pref_ranking
-
-    def guess_player_dislikes_from_choice(self, player, added_flavors, top_layer_before_serving):
-        """
-        Guess the flavors that player probably dislikes based on the top_layer situation before they serve themselves,
-        and what flavors they end up choosing. Can only be used when we pass the container directly to player.
-        :param player: the player to be guessed on.
-        :param added_flavors: output of diff_served().
-        :param top_layer_before_serving: visible flavors on the top layer when we pass the container to player.
-        :return: a list of flavors that the player probably doesn't like. Currently the strategy is to choose flavors
-                 that are on top_layer but the player doesn't end up choosing.
-        TODO: this function needs to be called one turn after we pass the container to player, which is impossible.
-              Currently it's not being used but we may use the idea later.
-        """
-        if len(added_flavors[player]) == 0:
-            print("WARNING: No added flavor info for this player!")
-            return None
-        dislikes = []
-        top_layer_summed = self.sum_top_layer(top_layer_before_serving)
-        top_layer_flavors = top_layer_summed.keys()
-        for flavor in top_layer_flavors:
-            if int(flavor) not in added_flavors[player]:
-                dislikes.append(flavor)
-
-        return dislikes
-
-    @staticmethod
-    def is_valid_next_player(turns_received, next_player):
-        """
-        Checks if next_player is a valid choice for passing the container to for this turn.
-        :param turns_received: output of get_turns_received().
-        :param next_player: player in question.
-        :return: True if next_player is a valid choice.
-        """
-        if np.amin(turns_received) < turns_received[next_player]:
-            return False
-        return True
-
-    @staticmethod
-    def diff_served(new_served, current_served=None):
-        """
-        Compare new_served against current_served and output changes in the container.
-        :param new_served: new container situation.
-        :param current_served: current container situation. None if new_served is from the first turn.
-        :return: changed_flavors[player_i] contains a list of flavors that player_i has newly added to
-                 their bowl since current_served.
-        TODO: Take the amount into consideration?
-        """
-        changed_flavors = []
-
-        for p_id in range(len(new_served)):
-            changed_flavors.append([])
-            for flavor in new_served[p_id].keys():
-                if current_served:
-                    if new_served[p_id][flavor] > current_served[p_id][flavor]:
-                        changed_flavors[p_id].append(flavor)
-                else:
-                    if new_served[p_id][flavor] > 0:
-                        changed_flavors[p_id].append(flavor)
-
-        return changed_flavors
-
-    @staticmethod
-    def sum_top_layer(top_layer):
-        """
-        Summarize top_layer information by flavor.
-        :param top_layer: visible flavors.
-        :return: top_layer_summed['flavor_i'] is the amount of flavor_i currently visible on top_layer.
-        TODO: come up with other ways to convert the top layer flavor info into useful information.
-        """
-        top_layer_summed = {}
-        for i in range(np.shape(top_layer)[0]):
-            for j in range(np.shape(top_layer)[1]):
-                if str(top_layer[i][j]) not in top_layer_summed:
-                    top_layer_summed[str(top_layer[i][j])] = 0
-                top_layer_summed[str(top_layer[i][j])] += 1
-
-        return top_layer_summed
-
-    @staticmethod
-    def evaluate_partial_scoop(top_layer: np.ndarray, curr_level: np.ndarray):
-        pass
 
     @staticmethod
     def iterate_coordinates(top_layer: np.ndarray):
@@ -412,25 +278,29 @@ class Player:
             if second_level_scoop.size > 0:
                 yield second_level_scoop
 
-    def rank_scoops(self, top_layer, curr_level):
+    def rank_scoops(self, top_layer, curr_level, flavor_preference=None):
         queues = {}
+        if flavor_preference is None:
+            flavor_preference = self.flavor_preference
         for scoop in self.iterate_scoops(top_layer, curr_level):
             q = queues.get(scoop.size)
             if q is None:
                 queues[scoop.size] = []
-            queues[scoop.size].append((scoop.score(self.flavor_preference), scoop))
+            queues[scoop.size].append((scoop.score(flavor_preference), scoop))
 
         for q in queues.values():
             q.sort()
 
         return queues
 
-    def choose_best_scoop_combination(self, top_layer, curr_level):
-        total_needed = 24 - self.state[CURRENT_TURN_SERVED]
+    def choose_best_scoop_combination(
+            self, top_layer, curr_level, current_served,
+            flavor_preference=None, exclude_coordinates=None):
+        total_needed = 24 - current_served
         if total_needed == 0:
             return None
 
-        queues = self.rank_scoops(top_layer, curr_level)
+        queues = self.rank_scoops(top_layer, curr_level, flavor_preference)
         partial_needed = total_needed % 4
         if partial_needed == 0:
             needed = 4
@@ -445,16 +315,22 @@ class Player:
         # To account for this edge case, we decrease the needed scoops by 1 on each
         # loop repetition until some choices are returned.
         # You can trigger a test case for this issue with rng seed 2003
+        if exclude_coordinates is None:
+            exclude_coordinates = set()
+
         while len(scoop_choices) == 0 and needed > 0:
-            scoop_choices.extend(Player.build_scoop_recursive([], set(), needed, queues.copy()))
+            scoop_choices.extend(Player.build_scoop_recursive([], exclude_coordinates.copy(), needed, queues.copy()))
             if needed + 4 <= total_needed:
-                scoop_choices.extend(Player.build_scoop_recursive([], set(), needed + 4, queues.copy()))
+                scoop_choices.extend(Player.build_scoop_recursive([], exclude_coordinates.copy(), needed + 4, queues.copy()))
             needed -= 1
 
         def sort_fn(item):
             score, size, _ = item
             return score / size
         scoop_choices.sort(key=sort_fn)
+
+        if len(scoop_choices) == 0:
+            return None
 
         # Time to unpack some tuples
         _, _, scoop = scoop_choices.pop()
