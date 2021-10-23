@@ -629,6 +629,6 @@ if __name__ == '__main__':
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
     parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
-    parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout")
+    parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout in non GUI mode")
     args = parser.parse_args()
     ice_cream_game = IceCreamGame(args)
