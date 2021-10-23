@@ -81,12 +81,12 @@ class IceCreamGame():
 
         if args.seed == 0:
             args.seed = None
-            self.logger.debug("Initialise random number generator with no seed")
+            self.logger.info("Initialise random number generator with no seed")
         else:
-            self.logger.debug("Initialise random number generator with {} seed".format(args.seed))
+            self.logger.info("Initialise random number generator with {} seed".format(args.seed))
         self.rng = np.random.default_rng(args.seed)
         if args.flavors == 0:
-            self.logger.debug("Using random number of flavors")
+            self.logger.info("Using random number of flavors")
             rand_num_flavors_idx = self.rng.integers(0, len(constants.num_flavor_choices))
             args.flavors = constants.num_flavor_choices[rand_num_flavors_idx]
         self.ice_cream_container = IceCreamContainer(self.rng, self.logger, num_flavors=args.flavors)
