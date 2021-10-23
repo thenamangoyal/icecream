@@ -191,6 +191,9 @@ class IceCreamGame():
             for player_idx in total_time_order:
                 self.logger.info("{} took {:.3f}s".format(self.player_names[player_idx], total_time[player_idx]))
             
+            for player_idx, player_served in enumerate(self.served):
+                self.logger.info("{} final bowl {}".format(self.player_names[player_idx],player_served))
+            
             for player_idx, player_timeout_count in enumerate(self.timeout_count):
                 if player_timeout_count > 0:
                     self.logger.info("{} timed out {} times".format(self.player_names[player_idx], player_timeout_count))
@@ -199,8 +202,6 @@ class IceCreamGame():
                 if player_error_count > 0:
                     self.logger.info("{} had exceptions {} times".format(self.player_names[player_idx], player_error_count))
             
-            for player_idx, player_served in enumerate(self.served):
-                self.logger.info("{} final bowl {}".format(self.player_names[player_idx],player_served))
             for player_idx, score in enumerate(self.player_scores):
                 self.logger.info("{} individual score: {}".format(self.player_names[player_idx], score))
             group_score = np.mean(self.player_scores)
