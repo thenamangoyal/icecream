@@ -197,7 +197,7 @@ class Player:
                 if units_scooped == 24:
                     break
                 exclude = set()
-                scoop_list = self.choose_best_scoop_combination(top_layer, curr_level, units_scooped, player_pref, exclude)
+                scoop_list = self.choose_best_scoop_combination(top_layer, curr_level, units_scooped, player_pref, exclude, True)
                 if scoop_list is None:
                     break
                 _, best_scoop = scoop_list.pop()
@@ -278,11 +278,11 @@ class Player:
             if second_level_scoop.size > 0:
                 yield second_level_scoop
 
-    def rank_scoops(self, top_layer, curr_level, flavor_preference=None):
+    def rank_scoops(self, top_layer, curr_level, flavor_preference=None, single_level_only=False):
         queues = {}
         if flavor_preference is None:
             flavor_preference = self.flavor_preference
-        for scoop in self.iterate_scoops(top_layer, curr_level):
+        for scoop in self.iterate_scoops(top_layer, curr_level, single_level_only):
             q = queues.get(scoop.size)
             if q is None:
                 queues[scoop.size] = []
@@ -295,12 +295,12 @@ class Player:
 
     def choose_best_scoop_combination(
             self, top_layer, curr_level, current_served,
-            flavor_preference=None, exclude_coordinates=None):
+            flavor_preference=None, exclude_coordinates=None, single_level_only=False):
         total_needed = 24 - current_served
         if total_needed == 0:
             return None
 
-        queues = self.rank_scoops(top_layer, curr_level, flavor_preference)
+        queues = self.rank_scoops(top_layer, curr_level, flavor_preference, single_level_only)
         partial_needed = total_needed % 4
         if partial_needed == 0:
             needed = 4
@@ -492,3 +492,21 @@ def test_scoop_generation_and_scoring():
     sc = chosen_scoop.score(player.flavor_preference)
     assert sc == 13
     assert chosen_scoop.actual_size == 1
+
+
+def test_rank_scoops_sorts_scoops_in_ascending_order():
+    """Sort order returned by `rank_scoops` is important since other functions
+       rely on it.
+    """
+    top_layer = np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
+    curr_level = np.array([[2, 2, 2, 3], [2, 1, 1, 2]])
+    player = Player([4, 3, 2, 1], np.random.default_rng(2021), logging.Logger("default"))
+    queues = player.rank_scoops(top_layer, curr_level)
+    for queue in queues.values():
+        scores = [(score, scoop.size) for score, scoop in queue]
+        scores_sorted = scores[:]
+        # Make sure these are different objects...
+        assert scores is not scores_sorted
+        # Make sure the original is sorted correctly
+        scores_sorted.sort()
+        assert scores == scores_sorted
