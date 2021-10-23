@@ -135,7 +135,7 @@ class IceCreamGame():
             self.time_taken.append([]) # a list of time taken in each turn (recorded as list of step times) for a player
             self.turns_received = np.zeros(len(self.players), dtype=np.int)
             self.player_scores.append(0)
-            self.total_turn_per_player = math.floor(120 / len(self.players))
+            self.total_turn_per_player = math.floor(constants.max_total_turns / len(self.players))
         else:
             self.logger.debug("Failed to insert player as another player with name {} exists.".format(player_name))
 
