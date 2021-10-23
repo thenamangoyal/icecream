@@ -59,8 +59,11 @@ class IceCreamGame():
     def __init__(self, args):
         self.args = args
         self.use_gui = not(args.no_gui)
-        self.use_timeout = not(args.disable_timeout)
-
+        if not self.use_gui:
+            self.use_timeout = not(args.disable_timeout)
+        else:
+            self.use_timeout = False
+        
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         self.log_dir = os.path.join(root_dir, 'log')
