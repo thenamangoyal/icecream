@@ -1,9 +1,7 @@
 import math
 import numpy as np
-import copy
 import logging
 from typing import Callable, Dict, List, Tuple, Union
-from operator import itemgetter
 
 
 class Player:
@@ -32,7 +30,9 @@ class Player:
 
         # 1 : Greedy strategy
         # 2 : 'Altruistic' greedy strategy (Check if someone else enjoys a scoop more before scooping)
-        self.scooping_strategy = 1
+        self.scooping_strategy = 2
+        self.scooping_optimizations = True  # include scooping optimizations
+        self.num_players = 0
 
     def serve(self, top_layer: np.ndarray, curr_level: np.ndarray, player_idx: int,
               get_flavors: Callable[[], List[int]], get_player_count: Callable[[], int],
@@ -63,9 +63,12 @@ class Player:
             {"action": "pass",  "values" : i} pass to next player with index i
         """
 
+        self.num_players = get_player_count()
+        if self.num_players == 2:
+            self.scooping_strategy = 1
+
         # This will only happen in the second around
         if max(get_turns_received()) == 2 and not all(self.preference_initialize):
-            # print("in second turn")
             serve_dict = get_served()
             for p_id, is_initialized in enumerate(self.preference_initialize):
                 if not is_initialized:
@@ -74,9 +77,6 @@ class Player:
                                                         key=lambda k: -cumulative[k])
                     self.preference_estimate[p_id] = cumulative_flavor_estimate
                     self.preference_initialize[p_id] = True
-            # for idx, l in enumerate(self.preference_estimate):
-            #     print("Group ", idx + 1)
-            #     print(l)
 
         # This will only happen in the first round
         if not self.preference_estimate:
@@ -133,7 +133,6 @@ class Player:
         # Pass to another player if the scoop failed or we cannot scoop anymore
         action = "pass"
         turns_num = get_turns_received()
-        # print(turns_num, "turn num")
         max_turn = max(turns_num)
         players_served = [p_id for p_id, turn in enumerate(turns_num) if p_id != player_idx and turn == max_turn]
         next_serve_dict = get_served()
@@ -147,34 +146,6 @@ class Player:
         next_player = self.choose_player(top_layer, curr_level, players_not_served)
         values = next_player
         self.curr_units_taken = 0
-        # for idx, l in enumerate(self.preference_estimate):
-        #     print("Group ", idx + 1)
-        #     print(l)
-        #     prev_cum = self.prev_serve_dict[idx]
-        #     cur_cum = next_serve_dict[idx]
-        #     print("prev", prev_cum)
-        #     print("cur", cur_cum)
-        #     cumulative = next_serve_dict[idx]
-        #     cumulative_flavor_estimate = sorted(range(self.flavor_range[0], self.flavor_range[1] + 1), key=lambda k: -cumulative[k])
-        #     print("cur cumu estimate", cumulative_flavor_estimate)
-        #     turn_differences = self.compute_turn_differences(prev_cum, cur_cum)
-        #     print("turn diff", turn_differences)
-        #     print("turn estimate")
-        #     print(sorted(range(1, len(turn_differences) + 1), key=lambda k: -turn_differences[k - 1]))
-        #
-        # if max_turn == 4:
-        #     print("Start debug")
-        #
-        # if max_turn == 8:
-        #     print("debug 2")
-        # self.prev_serve_dict = next_serve_dict
-        if max_turn == 20:
-            print(player_idx)
-
-            for idx, l in enumerate(self.preference_estimate):
-                print("Group ", idx + 1)
-                print(l)
-                print(get_served()[idx], sum(get_served()[idx].values()))
 
         return {"action": action, "values": values}
 
@@ -186,7 +157,6 @@ class Player:
             # If the current player has not been served, no info update
             if sum(turn_differences) == 0:
                 continue
-            # print("Group ", player_id + 1)
             turn_flavor_estimate = sorted(range(1, len(turn_differences) + 1), key=lambda k: -turn_differences[k - 1])
             cumulative = new_serve_dict[player_id]
             cumulative_flavor_estimate = sorted(range(self.flavor_range[0], self.flavor_range[1] + 1), key=lambda k: -cumulative[k])
@@ -218,7 +188,6 @@ class Player:
         '''
 
         lr = initial * math.pow(drop, math.floor((1+iteration)/self.iteration_drop))
-        # print("New Learning rate ", lr)
         return lr
 
     def compute_turn_differences(self, prev_serve, curr_serve) -> List[int]:
@@ -270,7 +239,7 @@ class Player:
             curr_units_taken = curr_player_score = cur_turn = 0
             while curr_units_taken < 24 and cur_turn < max_turn:
                 cur_turn += 1
-                _, units_taken, score = self.get_max(top_layer, curr_level, self.preference_estimate[player],
+                _, units_taken, score = self.get_max_greedy(top_layer, curr_level, self.preference_estimate[player],
                                                      curr_units_taken)
                 curr_units_taken += units_taken
                 curr_player_score += score
@@ -295,8 +264,7 @@ class Player:
         ret = (-1, -1)
         final_units_taken = 0
         max_score = -1
-        unit_max_score = -1
-        next_unit_max_score = -1
+        unit_max_score, next_unit_max_score, adjacent_max_score = -1, -1, -1
         m, n = top_layer.shape
         for i in range(m - 1):
             for j in range(n - 1):
@@ -305,8 +273,8 @@ class Player:
                 next_coords = [curr_level[coord] for coord in coords if max_level != curr_level[coord]]
                 next_max_level = max(next_coords) if (len(next_coords)) > 0 else []
 
-                total_score = units_taken = 0 # get score for matching maximum level
-                next_total_score = next_units_taken = 0 # get score for next matching maximum level -- where next level is the next highest level (in hopes of choosing scoop that could give us a good scoop in the future)
+                total_score = units_taken = 0  # get score for matching maximum level
+                next_total_score = next_units_taken = 0  # get score for next matching maximum level -- where next level is the next highest level (in hopes of choosing scoop that could give us a good scoop in the future)
                 other_player_scores = [0]*len(self.preference_estimate)
                 for coord in coords:
                     if curr_level[coord] == max_level:
@@ -320,18 +288,18 @@ class Player:
                                 if other_player_idx != self.player_idx:
                                     other_player_scores[other_player_idx] += self.get_unit_score(top_layer[coord], self.preference_estimate[other_player_idx])
                         units_taken += 1
-                    if curr_level[coord] == next_max_level:
+                    if curr_level[coord] == next_max_level and abs(max_level - curr_level[coord] + 1) <= round((24 - curr_units_taken) / 4):
                         if top_layer[coord] == -1:
                             continue
                         cell_score = len(preferences) - preferences.index(top_layer[coord])
                         next_total_score += cell_score
                         next_units_taken += 1
-                if units_taken is 0:
+                if units_taken == 0:
                     continue
 
                 # Skip this scoop if we can expect an higher overall score if another player eats it
                 better_for_other_player = False
-                if self.scooping_strategy is 2:
+                if self.scooping_strategy == 2:
                     for other_player_score in other_player_scores:
                         if other_player_score / (len(self.preference_estimate) - 1) > total_score:
                             better_for_other_player = True
@@ -339,15 +307,23 @@ class Player:
                     continue
                 unit_score = total_score / units_taken
                 next_unit_score = next_total_score / next_units_taken if next_units_taken != 0 else 0
+                adjacent_coords = [(i-1, j), (i-1, j+1), (i, j+2), (i+1, j+2), (i+2, j+1), (i+2, j), (i+1, j-1), (i, j-1)]
+                num_adjacent = len(adjacent_coords)
+                adjacent_scores = [self.get_unit_score(top_layer[adj_coord], preferences) if (adj_coord[0]*adj_coord[1] >= 0 and adj_coord[0] < m and adj_coord[1] < n and curr_level[adj_coord] >= max_level) else 0 for adj_coord in adjacent_coords]
+                adjacent_pair_sums = [adjacent_scores[i] + adjacent_scores[i + 1] for i in range(num_adjacent-2)]
+                adjacent_pair_sums.append(adjacent_scores[num_adjacent-1] + adjacent_scores[0])
+                adjacent_unit_score = max(adjacent_pair_sums)
                 if units_taken <= (24 - curr_units_taken):
                     if unit_score > unit_max_score:
                         max_score = total_score
-                        unit_max_score = unit_score
+                        unit_max_score, next_unit_max_score, adjacent_max_score = unit_score, next_unit_score, adjacent_unit_score
                         final_units_taken = units_taken
                         ret = (i, j)
-                    if unit_score == unit_max_score and next_unit_score > next_unit_max_score:
+                    if self.scooping_optimizations and unit_score == unit_max_score and \
+                            ((self.num_players > 6 and (curr_units_taken + units_taken < 24 and adjacent_unit_score > adjacent_max_score) or next_unit_score > next_unit_max_score)
+                             or (6 >= self.num_players > 2 and (units_taken < final_units_taken or (curr_units_taken + units_taken < 24 and adjacent_unit_score > adjacent_max_score)))):
                         max_score = total_score
-                        next_unit_max_score = next_unit_score
+                        next_unit_max_score, adjacent_max_score = next_unit_score, adjacent_unit_score
                         final_units_taken = units_taken
                         ret = (i, j)
         if final_units_taken == 0 and self.scooping_strategy == 2:
@@ -355,4 +331,41 @@ class Player:
             ret, final_units_taken, max_score = self.get_max(top_layer, curr_level, preferences, curr_units_taken)
             self.scooping_strategy = 2
             return ret, final_units_taken, max_score
+        return ret, final_units_taken, max_score
+
+    def get_max_greedy(self, top_layer, curr_level, preferences, curr_units_taken) -> Tuple[Tuple[int, int], int, int]:
+        '''
+        Greedy: find the best possible grid to scoop the ice cream based on preferences
+        :param top_layer: Numpy 2d array of size (24, 15) containing flavor at each cell location
+        :param curr_level: Numpy 2d array of size (24, 15) containing current level at each cell location from 8 to 0, where 8 is highest level at start and 0 means no icecream left at this level
+        :param preferences: A list flavor indicating player's preferences
+        :param curr_units_taken: An int indicates how many units of ice cream the current player has taken
+        :return: the best grid that maximizes player's idividual score based on player's preferences
+        '''
+        ret = (-1, -1)
+        final_units_taken = 0
+        max_score = -1
+        unit_max_score = -1
+        m, n = top_layer.shape
+        for i in range(m - 1):
+            for j in range(n - 1):
+                coords = [(i, j), (i + 1, j), (i, j + 1), (i + 1, j + 1)]
+                max_level = max([curr_level[coord] for coord in coords])
+                # get score for matching maximum level
+                total_score = units_taken = 0
+                for coord in coords:
+                    if curr_level[coord] == max_level:
+                        if top_layer[coord] == -1:
+                            continue
+                        cell_score = len(preferences) - preferences.index(top_layer[coord])
+                        total_score += cell_score
+                        units_taken += 1
+                if units_taken == 0:
+                    continue
+                unit_score = total_score / units_taken
+                if units_taken <= (24 - curr_units_taken) and unit_score > unit_max_score:
+                    max_score = total_score
+                    unit_max_score = unit_score
+                    final_units_taken = units_taken
+                    ret = (i, j)
         return ret, final_units_taken, max_score
