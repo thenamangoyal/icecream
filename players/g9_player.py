@@ -45,9 +45,27 @@ class Player:
             self.prev_turn = turns_rec
             self.units_taken = 0
 
+    
+        action = "scoop"
+        max_pos = (-1,-1)
+        max_score = -1
+        max_scoop_size = 0
+        max_scoop_level = -1
 
-        # Only accounts for the case when 24 units have been taken
-        if(self.units_taken == 24):
+        for i in range(top_layer.shape[0]-1):
+            for j in range(top_layer.shape[1]-1):
+                score, scoop_size, scoop_level = self.scoop_score(top_layer, curr_level, (i,j))
+                if (score > max_score or (score == max_score and 
+                    (scoop_size > max_scoop_size or scoop_level > max_scoop_level))):
+                    max_score = score
+                    max_pos = (i,j)
+                    max_scoop_size = scoop_size
+                    max_scoop_level = scoop_level
+        self.units_taken += max_scoop_size
+        values = max_pos      
+
+        # If we cannot scoop more
+        if(max_score == 0):
             # Count flavors in layer
             layer_Dict = {}
             for i in range(1, len(get_flavors()) + 1):
@@ -87,27 +105,6 @@ class Player:
             
             action = "pass"
             values = layer_score_Dict[0][0]
-
-
-        else:
-            
-            action = "scoop"
-            max_pos = (-1,-1)
-            max_score = -1
-            max_scoop_size = 0
-            max_scoop_level = -1
-
-            for i in range(top_layer.shape[0]-1):
-                for j in range(top_layer.shape[1]-1):
-                    score, scoop_size, scoop_level = self.scoop_score(top_layer, curr_level, (i,j))
-                    if (score > max_score or (score == max_score and 
-                        (scoop_size > max_scoop_size or scoop_level > max_scoop_level))):
-                        max_score = score
-                        max_pos = (i,j)
-                        max_scoop_size = scoop_size
-                        max_scoop_level = scoop_level
-            self.units_taken += max_scoop_size
-            values = max_pos           
 
         return {"action": action,  "values": values}
 
