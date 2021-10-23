@@ -64,6 +64,7 @@ class Player:
             return (max_locations[0][0], max_locations[0][1])
         
         max_locations.sort(key=lambda x: x[2], reverse=True)
+        #max_locations.sort(key=lambda x: x[2])
         higher_level = list(filter(lambda x: x[3] != 0, max_locations)) # filter function preserves order
 
         if not higher_level:
@@ -131,13 +132,13 @@ class Player:
 
         most_similar_player = -1
         similarity = -1
-        print('unserved_players:',unserved_players)
+        #print('unserved_players:',unserved_players)
         for unserved_player in unserved_players:
             if unserved_player==player_idx:
                 continue
             feature_vector = players_feature_vector[unserved_player]
             cur_similarity = self.cosine_similarity(self_feature_vector,feature_vector)
-            print(cur_similarity)
+            #print(cur_similarity)
             if cur_similarity>similarity:
                 most_similar_player = unserved_player
                 similarity = cur_similarity
@@ -178,7 +179,7 @@ class Player:
             self.state = 0 # reset for next turn
 
             values = self.get_most_similar_player(get_player_count,get_served, player_idx, get_turns_received)
-            print("Most similar player:",values)
+            #print("Most similar player:",values)
 
             #self.turns+=1
             #values = player_idx
