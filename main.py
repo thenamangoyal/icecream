@@ -66,7 +66,7 @@ class IceCreamGame():
         
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
-        self.log_dir = os.path.join(root_dir, 'log')
+        self.log_dir = os.path.abspath(args.log_dir)
         os.makedirs(self.log_dir, exist_ok=True)
         # create file handler which logs even debug messages
         fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
@@ -629,6 +629,7 @@ if __name__ == '__main__':
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
     parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
+    parser.add_argument("--log_dir", default="log", help="Path to dump log files")
     parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout in non GUI mode")
     args = parser.parse_args()
     ice_cream_game = IceCreamGame(args)
