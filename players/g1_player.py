@@ -1,3 +1,4 @@
+import functools
 import logging
 import math
 from typing import Callable, Dict, List, Tuple, Union, NamedTuple
@@ -37,9 +38,6 @@ def generate_choices(top_layer: np.ndarray, curr_level: np.ndarray) -> List[Choi
 def choose_next_player(now_turn: int, possible_players: List[int], served_situation: List[Dict[int, int]],
                        top_layer: np.ndarray, curr_level: np.ndarray, rng: np.random.Generator,
                        my_player_idx: int, my_flavor_preference: List[int], total_players: int) -> int:
-    if len(possible_players) == 1:
-        return possible_players[0]
-
     # if now_turn = 0, it means for the first turn, we just randomly choose a person to pass to
     if now_turn == 0 and len(possible_players) != 0:
         return rng.choice(possible_players)
@@ -68,7 +66,7 @@ def choose_next_player(now_turn: int, possible_players: List[int], served_situat
     if total_players > 4:
         total_units = 24 - int((0.3 * total_players) * 4)
 
-    weighted = weightedFunction(now_turn, max_turns)
+    weight = weight_func(now_turn, max_turns)
 
     for player_index, flavor_preference in greedy_flavor_preference.items():
         score_list = []
@@ -83,14 +81,14 @@ def choose_next_player(now_turn: int, possible_players: List[int], served_situat
         before_choice = score_list[0][1]
 
         for score_num, current_choice, count in score_list[1:]:
-            overlap = findOverlapScoop(before_choice, current_choice)
+            overlap = overlap_count(before_choice, current_choice)
             if remain - (count - overlap) < 0:
                 break
             remain -= (count - overlap)
             player_max_score += score_num
 
         player_max_score = player_max_score / (total_units - remain) \
-                           + weighted * difference(served_situation[my_player_idx], served_situation[player_index])
+                           + weight * difference(served_situation[my_player_idx], served_situation[player_index])
 
         if max_score < player_max_score:
             max_score = player_max_score
@@ -111,7 +109,7 @@ def choose_next_player(now_turn: int, possible_players: List[int], served_situat
     return flavor_differences[0][1]
 
 
-def weightedFunction(turn, max_turns):
+def weight_func(turn, max_turns):
     # we trust the later information more than before,
     # but the last information may be trusted less because groups have fewer choices
     exp_fun = 1 - math.exp(- turn / max_turns * 5)
@@ -120,12 +118,8 @@ def weightedFunction(turn, max_turns):
     return exp_fun
 
 
-def findOverlapScoop(choice1: List[Tuple[int, int]], choice2: List[Tuple[int, int]]) -> int:
-    overlap = 0
-    for scoopi, scoopj in choice2:
-        if (scoopi, scoopj) in choice1:
-            overlap += 1
-    return overlap
+def overlap_count(choice1: List[Tuple[int, int]], choice2: List[Tuple[int, int]]) -> int:
+    return len(set(choice1).intersection(set(choice2)))
 
 
 # copy from the below f function
@@ -134,7 +128,7 @@ def score(choice: Choice, flavor_preference) -> float:
     for flavor in choice.flavors:
         res -= flavor_preference.index(flavor)
     res /= len(choice.flavors)
-    res += choice.max_depth * 0.2
+    res += choice.max_depth * 0.5
     res += 0.01 * len(choice.flavors)
     return res
 
@@ -177,22 +171,6 @@ class Player:
                                              player_idx, self.flavor_preference, total_players)
             return dict(action="pass", values=next_player)
 
-            # if we just randomly choose one person
-            # if len(players) == 0:
-            #     players = [i for i in range(total_players)]
-            # return dict(action="pass", values=self.rng.choice(players))
-
-        def f(choice: Choice) -> float:
-            res = 0
-            for flavor in choice.flavors:
-                res -= self.flavor_preference.index(flavor)
-            res /= len(choice.flavors)
-            # it seems that max_depth does have a positive impact on scoring after testing,
-            # but we should still test weight = 0.2
-            res += choice.max_depth * 0.2
-            res += 0.01 * len(choice.flavors)
-            return res
-
-        choice = max(choices, key=f)
+        choice = max(choices, key=functools.partial(score, flavor_preference=self.flavor_preference))
         self.state[-1] += len(choice.flavors)
         return dict(action='scoop', values=choice.index)
