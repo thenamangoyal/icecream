@@ -61,7 +61,12 @@ class IceCreamGame():
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(logging.Formatter('%(message)s'))
         fh.addFilter(MainLoggingFilter(__name__))
+        rfh = logging.FileHandler(os.path.join(self.log_dir, 'results.log'), mode="w")
+        rfh.setLevel(logging.INFO)
+        rfh.setFormatter(logging.Formatter('%(message)s'))
+        rfh.addFilter(MainLoggingFilter(__name__))
         self.logger.addHandler(fh)
+        self.logger.addHandler(rfh)
 
         if args.seed == 0:
             args.seed = None
@@ -84,6 +89,7 @@ class IceCreamGame():
         self.player_names = []
         self.player_preferences = []
         self.served = []
+        self.time_taken = []
         self.turns_received = np.zeros(0, dtype=np.int)
         self.player_scores = []
         self.next_player = -1
@@ -120,21 +126,22 @@ class IceCreamGame():
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
             player_preference = self.rng.permutation(self.flavors).tolist()
-            self.logger.debug("Adding player {} with preference {}".format(player_name, player_preference))
+            self.logger.info("Adding player {} with preference {}".format(player_name, player_preference))
             player = player_class(player_preference, self.rng, self.__get_player_logger(player_name))
             self.players.append(player)
             self.player_preferences.append(player_preference)
             self.player_names.append(player_name)
             self.served.append({k: 0 for k in self.flavors})
+            self.time_taken.append([]) # a list of time taken in each turn (recorded as list of step times) for a player
             self.turns_received = np.zeros(len(self.players), dtype=np.int)
             self.player_scores.append(0)
-            self.total_turn_per_player = math.floor(120 / len(self.players))
+            self.total_turn_per_player = math.floor(constants.max_total_turns / len(self.players))
         else:
             self.logger.debug("Failed to insert player as another player with name {} exists.".format(player_name))
 
     def __get_player_logger(self, player_name):
         player_logger = logging.getLogger("{}.{}".format(__name__, player_name))
-        player_logger.setLevel(logging.DEBUG)
+        player_logger.setLevel(logging.INFO)
 
         # add handler to self.logger with filtering
         player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
@@ -153,14 +160,30 @@ class IceCreamGame():
     def __game_end(self):
         if not self.end_message_printed and self.is_game_ended():
             self.end_message_printed = True
-            self.__log("Game ended as each player played {} turns".format(self.total_turn_per_player))
+            self.logger.info("Game ended as each player played {} turns".format(self.
+            total_turn_per_player))
+            if self.use_gui:
+                self.ice_cream_app.set_label_text("Game ended as each player played {} turns".format(self.total_turn_per_player))
             for player_idx, score in enumerate(self.player_scores):
                 self.logger.debug("{} turns: {}".format(self.player_names[player_idx], self.turns_received[player_idx]))
+            total_time = np.zeros(len(self.players))
+            for player_idx, player_time_taken in enumerate(self.time_taken):
+                player_time_taken = np.array(player_time_taken)
+                self.logger.info("{} took {} steps, total time {:.3f}s, avg step time {:.3f}s, max step time {:.3f}s".format(self.player_names[player_idx], player_time_taken.size, np.sum(player_time_taken), np.mean(player_time_taken), np.amax(player_time_taken)))
+                total_time[player_idx] = np.sum(player_time_taken)
+            self.logger.info("Total time taken by all players {:.3f}s".format(np.sum(total_time)))
+            total_time_order = np.argsort(total_time)[::-1]
+            self.logger.info("Players sorted by total time")
+            for player_idx in total_time_order:
+                self.logger.info("{} took {:.3f}s".format(self.player_names[player_idx], total_time[player_idx]))
+            
+            for player_idx, player_served in enumerate(self.served):
+                self.logger.info("{} final bowl {}".format(self.player_names[player_idx],player_served))
             for player_idx, score in enumerate(self.player_scores):
-                self.logger.debug("{} individual score: {}".format(self.player_names[player_idx], score))
+                self.logger.info("{} individual score: {}".format(self.player_names[player_idx], score))
             group_score = np.mean(self.player_scores)
             final_scores = []
-            self.logger.debug("Average group score for all players: {}".format(group_score))
+            self.logger.info("Average group score for all players: {}".format(group_score))
             for player_idx, score in enumerate(self.player_scores):
                 other_player_scores = np.copy(self.player_scores)
                 other_player_scores = np.delete(other_player_scores, player_idx)
@@ -168,10 +191,12 @@ class IceCreamGame():
                     final_scores.append(score)
                 else:
                     final_scores.append(np.mean([score, np.mean(other_player_scores)]))
-                self.logger.debug("{} final score: {}".format(self.player_names[player_idx], final_scores[player_idx]))
+                self.logger.info("{} final score: {}".format(self.player_names[player_idx], final_scores[player_idx]))
             final_scores = np.array(final_scores)
             winner_list = np.argwhere(final_scores == np.amax(final_scores))
-            self.__log("Winner{}: {}".format("s" if winner_list.shape[0] > 1 else "", ", ".join([self.player_names[i[0]] for i in winner_list])), label_num=1)
+            self.logger.info("Winner{}: {}".format("s" if winner_list.shape[0] > 1 else "", ", ".join([self.player_names[i[0]] for i in winner_list])))
+            if self.use_gui:
+                self.ice_cream_app.set_label_text("Winner{}: {}".format("s" if winner_list.shape[0] > 1 else "", ", ".join([self.player_names[i[0]] for i in winner_list])), label_num=1)
 
     def __turn_end(self, new_next_player=None):
         self.processing_turn = False
@@ -232,6 +257,7 @@ class IceCreamGame():
                 self.processing_turn = True
                 self.served_this_turn = []
                 self.turns_received[self.next_player] += 1
+                self.time_taken[self.next_player].append([])
 
             else:
                 self.__game_end()
@@ -273,7 +299,10 @@ class IceCreamGame():
             top_layer = self.ice_cream_container.get_top_layer()
             curr_level = self.ice_cream_container.get_curr_level()
             try:
+                start_time = time.time()
                 action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
+                step_time = time.time() - start_time
+                self.time_taken[player_idx][-1].append(step_time)
             except Exception as e:
                 self.logger.error(e, exc_info=True)
                 action_values_dict = dict()
@@ -281,7 +310,7 @@ class IceCreamGame():
             if is_valid_action:
                 action = action_values_dict["action"]
                 values = action_values_dict["values"]
-                self.logger.debug("Received action: {} from {}".format(action_values_dict, self.player_names[player_idx]))
+                self.logger.debug("Received action: {} from {} in {:.3f}s".format(action_values_dict, self.player_names[player_idx], step_time))
                 if self.use_gui:
                     self.ice_cream_app.set_label_text("{}, {}".format(self.ice_cream_app.get_label_text(), action_values_dict))
 
@@ -480,7 +509,7 @@ class IceCreamContainer:
         if num_flavors not in constants.num_flavor_choices:
             self.logger.debug("Num flavors {} is not in allowed values, using {} flavors".format(num_flavors, constants.default_num_flavor_choice))
             num_flavors = constants.default_num_flavor_choice
-        self.logger.debug("Generating ice cream with {} flavors".format(num_flavors))
+        self.logger.info("Generating ice cream with {} flavors".format(num_flavors))
         self.flavors = list(range(1, num_flavors+1))
         self.l = constants.length  # cols
         self.w = constants.width  # rows
