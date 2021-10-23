@@ -492,3 +492,21 @@ def test_scoop_generation_and_scoring():
     sc = chosen_scoop.score(player.flavor_preference)
     assert sc == 13
     assert chosen_scoop.actual_size == 1
+
+
+def test_rank_scoops_sorts_scoops_in_ascending_order():
+    """Sort order returned by `rank_scoops` is important since other functions
+       rely on it.
+    """
+    top_layer = np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
+    curr_level = np.array([[2, 2, 2, 3], [2, 1, 1, 2]])
+    player = Player([4, 3, 2, 1], np.random.default_rng(2021), logging.Logger("default"))
+    queues = player.rank_scoops(top_layer, curr_level)
+    for queue in queues.values():
+        scores = [(score, scoop.size) for score, scoop in queue]
+        scores_sorted = scores[:]
+        # Make sure these are different objects...
+        assert scores is not scores_sorted
+        # Make sure the original is sorted correctly
+        scores_sorted.sort()
+        assert scores == scores_sorted
