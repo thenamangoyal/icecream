@@ -121,14 +121,19 @@ class IceCreamGame():
             start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, args.automatic))
         else:
             self.logger.debug("No GUI flag specified")
-            self.play_all()
+
+    def get_state(self):
+        return_dict = dict()
+        for val in ["player_names", "player_preferences", "served", "time_taken", "turns_received", "timeout_count", "error_count", "player_scores"]:
+            return_dict[val] = getattr(self, val)
+        return return_dict
 
     def __log(self, message, label_num=0):
         self.logger.debug(message)
         if self.use_gui:
             self.ice_cream_app.set_label_text(message, label_num)
     
-    
+
     def __add_players(self, player_list):
         player_count = dict()
         for player_name in player_list:
@@ -650,4 +655,8 @@ if __name__ == '__main__':
     parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout in non GUI mode")
     args = parser.parse_args()
     player_list = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
+    
     ice_cream_game = IceCreamGame(player_list, args)
+    if not ice_cream_game.use_gui:
+        ice_cream_game.play_all()
+        # ice_cream_game.get_state()
