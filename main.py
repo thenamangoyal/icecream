@@ -59,6 +59,7 @@ class IceCreamGame():
     def __init__(self, args):
         self.args = args
         self.use_gui = not(args.no_gui)
+        self.use_timeout = not(args.disable_timeout)
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -322,12 +323,14 @@ class IceCreamGame():
             top_layer = self.ice_cream_container.get_top_layer()
             curr_level = self.ice_cream_container.get_curr_level()
             try:
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(constants.timeout)
+                if self.use_timeout:
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(constants.timeout)
                 try:
                     start_time = time.time()
                     action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
-                    signal.alarm(0)      # Clear alarm
+                    if self.use_timeout:
+                        signal.alarm(0)      # Clear alarm
                 except TimeoutException:
                     self.logger.error("Timeout {} since {:.3f}s reached.".format(self.player_names[player_idx], constants.timeout))
                     action_values_dict = dict()
@@ -623,5 +626,6 @@ if __name__ == '__main__':
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
     parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
+    parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout")
     args = parser.parse_args()
     ice_cream_game = IceCreamGame(args)
