@@ -169,6 +169,8 @@ class IceCreamGame():
             total_time = np.zeros(len(self.players))
             for player_idx, player_time_taken in enumerate(self.time_taken):
                 player_time_taken_flatten = np.concatenate(player_time_taken)
+                if player_time_taken_flatten.size == 0:
+                    player_time_taken_flatten = np.zeros(1)
                 self.logger.info("{} took {} steps, total time {:.3f}s, avg step time {:.3f}s, max step time {:.3f}s".format(self.player_names[player_idx], player_time_taken_flatten.size, np.sum(player_time_taken_flatten), np.mean(player_time_taken_flatten), np.amax(player_time_taken_flatten)))
                 total_time[player_idx] = np.sum(player_time_taken_flatten)
             self.logger.info("Total time taken by all players {:.3f}s".format(np.sum(total_time)))
