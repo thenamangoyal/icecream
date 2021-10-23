@@ -5,3 +5,4 @@ max_total_turns = 120
 length = 24 # cols
 width = 15  # rows
 height = 8  # height
+timeout = 1

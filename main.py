@@ -1,5 +1,6 @@
 import os
 import time
+import signal
 import math
 import numpy as np
 import remi.gui as gui
@@ -23,6 +24,13 @@ from players.g9_player import Player as G9_Player
 from players.g10_player import Player as G10_Player
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+class TimeoutException(Exception):   # Custom exception class
+    pass
+
+def timeout_handler(signum, frame):   # Custom signal handler
+    raise TimeoutException
 
 
 class MainLoggingFilter(logging.Filter):
@@ -91,6 +99,8 @@ class IceCreamGame():
         self.served = []
         self.time_taken = []
         self.turns_received = np.zeros(0, dtype=np.int)
+        self.timeout_count = np.zeros(0, dtype=np.int)
+        self.error_count = np.zeros(0, dtype=np.int)
         self.player_scores = []
         self.next_player = -1
 
@@ -134,6 +144,8 @@ class IceCreamGame():
             self.served.append({k: 0 for k in self.flavors})
             self.time_taken.append([]) # a list of time taken in each turn (recorded as list of step times) for a player
             self.turns_received = np.zeros(len(self.players), dtype=np.int)
+            self.timeout_count = np.zeros(len(self.players), dtype=np.int)
+            self.error_count = np.zeros(len(self.players), dtype=np.int)
             self.player_scores.append(0)
             self.total_turn_per_player = math.floor(constants.max_total_turns / len(self.players))
         else:
@@ -178,6 +190,14 @@ class IceCreamGame():
             self.logger.info("Players sorted by total time")
             for player_idx in total_time_order:
                 self.logger.info("{} took {:.3f}s".format(self.player_names[player_idx], total_time[player_idx]))
+            
+            for player_idx, player_timeout_count in enumerate(self.timeout_count):
+                if player_timeout_count > 0:
+                    self.logger.info("{} timed out {} times".format(self.player_names[player_idx], player_timeout_count))
+            
+            for player_idx, player_error_count in enumerate(self.error_count):
+                if player_error_count > 0:
+                    self.logger.info("{} had exceptions {} times".format(self.player_names[player_idx], player_error_count))
             
             for player_idx, player_served in enumerate(self.served):
                 self.logger.info("{} final bowl {}".format(self.player_names[player_idx],player_served))
@@ -301,13 +321,22 @@ class IceCreamGame():
             top_layer = self.ice_cream_container.get_top_layer()
             curr_level = self.ice_cream_container.get_curr_level()
             try:
-                start_time = time.time()
-                action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(constants.timeout)
+                try:
+                    start_time = time.time()
+                    action_values_dict = player.serve(top_layer, curr_level, player_idx, self.get_flavors, self.get_player_count, self.get_served, self.get_turns_received)
+                    signal.alarm(0)      # Clear alarm
+                except TimeoutException:
+                    self.logger.error("Timeout {} since {:.3f}s reached.".format(self.player_names[player_idx], constants.timeout))
+                    action_values_dict = dict()
+                    self.timeout_count[player_idx] += 1
                 step_time = time.time() - start_time
                 self.time_taken[player_idx][-1].append(step_time)
             except Exception as e:
                 self.logger.error(e, exc_info=True)
                 action_values_dict = dict()
+                self.error_count[player_idx] += 1
             is_valid_action = self.__check_action(action_values_dict)
             if is_valid_action:
                 action = action_values_dict["action"]
