@@ -60,7 +60,7 @@ class Player:
                         score = 0
                         scoops = 0
                         for k in range(i, i+2):
-                            for l in range(j, j +2):
+                            for l in range(j, j+2):
                                 if curr_level[k,l] == top:
                                     # check if over 24 and set score to 0 if thats the case
                                     scoops = scoops + 1
@@ -76,11 +76,10 @@ class Player:
                             max_score = score
                             min_scoops = scoops
                             best_cell = (i,j)
-                        elif score == max_score:
-                            if scoops < min_scoops:
-                                max_score = score
-                                min_scoops = scoops
-                                best_cell = (i,j)
+                        elif score == max_score and scoops >= min_scoops:
+                            max_score = score
+                            min_scoops = scoops
+                            best_cell = (i,j)
 
             action = "scoop"
             self.state = self.state + min_scoops
@@ -90,13 +89,21 @@ class Player:
         else: # passing to another player
             self.state = 0
             action = "pass"
-            #last_player_pref = self.updatePlayerPreference(self.previousNextPlayer, get_served()[self.previousNextPlayer])
-            last_player =  get_served()[self.previousNextPlayer]
-            temp = list({k: v for k, v in sorted(last_player.items(), key=lambda item: item[1])}.keys())
-            temp.reverse()
-            last_player_pref = temp
+            last_player_pref = self.updatePlayerPreference(self.previousNextPlayer, get_served()[self.previousNextPlayer])
+            #last_player =  get_served()[self.previousNextPlayer]
+            #temp = list({k: v for k, v in sorted(last_player.items(), key=lambda item: item[1])}.keys())
+            #temp.reverse()
+            #last_player_pref = temp
             other_player_list = list(range(0, get_player_count()))
-            other_player_list.remove(player_idx)
+            # get_turns_received (Callable[[], List[int]]): method which returns a list of integers corresponding to each player, each element at index i tells how many turns a player with index i has played so far.
+            turns = get_turns_received()
+            most_turns = max(turns)
+            min_turns = min(turns)
+            if most_turns!=min_turns:
+                for i in range(0, len(turns)):
+                    if turns[i] == most_turns:
+                        other_player_list.remove(i)
+            #other_player_list.remove(player_idx)
             player_to_pass = self.calculateBestScoop(top_layer, curr_level, get_flavors, other_player_list, get_served, get_turns_received, last_player_pref)
             self.nextPlayerPreference = self.estimateNextScore(player_to_pass, top_layer, curr_level, get_served)
             values = player_to_pass
@@ -105,21 +112,24 @@ class Player:
 
 
     def estimateNextScore(self, player_to_pass: int ,top_layer: np.ndarray, curr_level: np.ndarray, get_served: Callable[[], List[Dict[int, int]]]):
-        player_dict = get_served()[player_to_pass] 
+        player_dict = get_served()[player_to_pass]
         permutation_dict = {}
         temp = list({k: v for k, v in sorted(player_dict.items(), key=lambda item: item[1])}.keys())
         temp.reverse()
         player_preferences = temp
-        top_flavors = player_preferences[:3]
-        permutations = list(itertools.permutations(top_flavors))
+        if (len(player_preferences) == 2) :
+            top_flavors = player_preferences[:3]
+            permutations = list(itertools.permutations(top_flavors))
+        else:
+            permutations = []
+            permutations.append(player_preferences)
         for permutation in permutations:
-            preferences = list(permutation).append(player_preferences[3:])
-            score, permutation_dict[preferences] = self.calculateBestScoopForEachPlayer(top_layer, curr_level, player_preferences, player_dict )
-        return permutation_dict
-        
-
-
-        
+            preferences = list(permutation)
+            if (len(player_preferences) >2):
+                for i in range(3,len(player_preferences)):
+                    preferences.append(player_preferences[i])
+            score, permutation_dict[tuple(preferences)] = self.calculateBestScoopForEachPlayer(top_layer, curr_level, player_preferences, player_dict )
+        return permutation_dict     
 
     def calculateBestScoop(self, top_layer: np.ndarray, curr_level: np.ndarray, get_flavors: Callable[[], List[int]], player_list, get_served: Callable[[], List[Dict[int, int]]], get_turns_received: Callable[[], List[int]], last_player_pref) -> Dict[str, Union[Tuple[int], int]]:
         
@@ -134,7 +144,6 @@ class Player:
                 temp = list({k: v for k, v in sorted(player_dict.items(), key=lambda item: item[1])}.keys())
                 temp.reverse()
                 player_preferences = temp
-            print(player)
             players_score, number_of_cubes_per_flavor = self.calculateBestScoopForEachPlayer(top_layer, curr_level, player_preferences, player_dict)
             if players_score > max_players_score:
                 player_to_pass = player
@@ -184,28 +193,26 @@ class Player:
             players_score += max_score
             (i, j) = best_cell
             CL = max(curr_level[i][j], curr_level[i+1][j], curr_level[i][j+1], curr_level[i+1][j+1])
-            if (i, j) not in cells_taken and curr_level[i][j] == CL:
+            if (i, j) not in cells_taken and curr_level[i][j] == CL and (top_layer[i][j] != -1):
                 cells_taken.append((i, j))
-                number_of_cubes_per_flavor[player_preferences.index(top_layer[i][j]) + 1] += 1
-            if (i+1, j) not in cells_taken and curr_level[i+1][j] == CL:
+                number_of_cubes_per_flavor[player_preferences.index(top_layer[i][j]) + 1 ] += 1
+            if (i+1, j) not in cells_taken and curr_level[i+1][j]  == CL and (top_layer[i+1][j] != -1):
                 cells_taken.append((i+1, j))
-                number_of_cubes_per_flavor[player_preferences.index(top_layer[i+1][j]) + 1] += 1
-            if (i, j+1) not in cells_taken and curr_level[i][j+1] == CL:
+                number_of_cubes_per_flavor[player_preferences.index(top_layer[i+1][j]) +1 ] += 1
+            if (i, j+1) not in cells_taken and curr_level[i][j+1] == CL and (top_layer[i][j+1] != -1):
                 cells_taken.append((i, j+1))
-                number_of_cubes_per_flavor[player_preferences.index(top_layer[i][j+1]) + 1] += 1
-            if (i+1, j+1) not in cells_taken and curr_level[i+1][j+1] == CL:
+                number_of_cubes_per_flavor[player_preferences.index(top_layer[i][j+1]) +1 ] += 1
+            if (i+1, j+1) not in cells_taken and curr_level[i+1][j+1] == CL and (top_layer[i+1][j+1] != -1):
                 cells_taken.append((i+1, j+1)) 
-                number_of_cubes_per_flavor[player_preferences.index(top_layer[i+1][j+1]) + 1] += 1
-        print(number_of_cubes_per_flavor)
-        #print(number_of_cubes_per_flavor)
+                number_of_cubes_per_flavor[player_preferences.index(top_layer[i+1][j+1]) +1 ] += 1
         return players_score, number_of_cubes_per_flavor
 
     def updatePlayerPreference(self, player, player_dict):
         best_preference = []
         min_difference= 100000000
-        for preference, flavors_dict in self.nextPlayerPreference:
+        for preference, flavors_dict in self.nextPlayerPreference.items():
             difference = 0
-            for flavor, quantity in flavors_dict:
+            for flavor, quantity in flavors_dict.items():
                 difference += abs(player_dict[flavor] - quantity)
             if difference < min_difference:
                 min_difference = difference
