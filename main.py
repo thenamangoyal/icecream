@@ -26,8 +26,10 @@ from players.g10_player import Player as G10_Player
 root_dir = os.path.dirname(os.path.abspath(__file__))
 return_vals = ["player_names", "final_scores", "winner_list", "player_scores", "player_preferences", "served", "total_time_sorted", "turns_received", "timeout_count", "error_count"]
 
+
 class TimeoutException(Exception):   # Custom exception class
     pass
+
 
 def timeout_handler(signum, frame):   # Custom signal handler
     raise TimeoutException
@@ -63,7 +65,7 @@ class IceCreamGame():
             self.use_timeout = not(args.disable_timeout)
         else:
             self.use_timeout = False
-        
+
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         # create file handler which logs even debug messages
@@ -144,7 +146,6 @@ class IceCreamGame():
         self.logger.debug(message)
         if self.use_gui:
             self.ice_cream_app.set_label_text(message, label_num)
-    
 
     def __add_players(self, player_list):
         player_count = dict()
@@ -152,8 +153,8 @@ class IceCreamGame():
             if player_name not in player_count:
                 player_count[player_name] = 0
             player_count[player_name] += 1
-        
-        count_used = {k:0 for k in player_count}
+
+        count_used = {k: 0 for k in player_count}
         for player_name in player_list:
             if player_name in constants.possible_players:
                 if player_name.lower() == "r":
@@ -170,7 +171,6 @@ class IceCreamGame():
             else:
                 self.logger.error("Failed to insert player {} since invalid player name provided.".format(player_name))
 
-
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
             player_preference = self.rng.permutation(self.flavors).tolist()
@@ -180,7 +180,7 @@ class IceCreamGame():
             self.player_preferences.append(player_preference)
             self.player_names.append(player_name)
             self.served.append({k: 0 for k in self.flavors})
-            self.time_taken.append([]) # a list of time taken in each turn (recorded as list of step times) for a player
+            self.time_taken.append([])  # a list of time taken in each turn (recorded as list of step times) for a player
             self.turns_received = np.zeros(len(self.players), dtype=np.int)
             self.timeout_count = np.zeros(len(self.players), dtype=np.int)
             self.error_count = np.zeros(len(self.players), dtype=np.int)
@@ -212,7 +212,7 @@ class IceCreamGame():
         if not self.end_message_printed and self.is_game_ended():
             self.end_message_printed = True
             self.logger.info("Game ended as each player played {} turns".format(self.
-            total_turn_per_player))
+                                                                                total_turn_per_player))
             if self.use_gui:
                 self.ice_cream_app.set_label_text("Game ended as each player played {} turns".format(self.total_turn_per_player))
             for player_idx, score in enumerate(self.player_scores):
@@ -230,18 +230,18 @@ class IceCreamGame():
             self.logger.info("Players sorted by total time")
             for (player_name, player_total_time) in self.total_time_sorted:
                 self.logger.info("{} took {:.3f}s".format(player_name, player_total_time))
-            
+
             for player_idx, player_served in enumerate(self.served):
-                self.logger.info("{} final bowl {}".format(self.player_names[player_idx],player_served))
-            
+                self.logger.info("{} final bowl {}".format(self.player_names[player_idx], player_served))
+
             for player_idx, player_timeout_count in enumerate(self.timeout_count):
                 if player_timeout_count > 0:
                     self.logger.info("{} timed out {} times".format(self.player_names[player_idx], player_timeout_count))
-            
+
             for player_idx, player_error_count in enumerate(self.error_count):
                 if player_error_count > 0:
                     self.logger.info("{} had exceptions {} times".format(self.player_names[player_idx], player_error_count))
-            
+
             for player_idx, score in enumerate(self.player_scores):
                 self.logger.info("{} individual score: {}".format(self.player_names[player_idx], score))
             group_score = np.mean(self.player_scores)
@@ -255,12 +255,12 @@ class IceCreamGame():
                 else:
                     final_scores.append(np.mean([score, np.mean(other_player_scores)]))
                 self.logger.info("{} final score: {}".format(self.player_names[player_idx], final_scores[player_idx]))
-            
+
             self.final_scores = np.array(final_scores)
 
             winner_list_idx = np.argwhere(self.final_scores == np.amax(self.final_scores))
             self.winner_list = [self.player_names[i[0]] for i in winner_list_idx]
-            
+
             self.logger.info("Winner{}: {}".format("s" if len(self.winner_list) > 1 else "", ", ".join(self.winner_list)))
             if self.use_gui:
                 self.ice_cream_app.set_label_text("Winner{}: {}".format("s" if len(self.winner_list) > 1 else "", ", ".join(self.winner_list)), label_num=1)
@@ -408,7 +408,7 @@ class IceCreamGame():
                         scooped_items_preference = [(flavor, self.__get_flavor_preference(player_idx, flavor)) for flavor in scooped_items]
 
                         self.served_this_turn.extend(scooped_items)
-                        self.logger.debug("Scooped (f,p): {} i.e. {} unit{}. So far scooped {} unit{} in this turn".format(scooped_items_preference, len(scooped_items), "s" if len(scooped_items)>1 else "", len(self.served_this_turn), "s" if len(self.served_this_turn)>1 else ""))
+                        self.logger.debug("Scooped (f,p): {} i.e. {} unit{}. So far scooped {} unit{} in this turn".format(scooped_items_preference, len(scooped_items), "s" if len(scooped_items) > 1 else "", len(self.served_this_turn), "s" if len(self.served_this_turn) > 1 else ""))
                         if self.use_gui:
                             self.ice_cream_app.set_label_text("{}, {}".format(self.ice_cream_app.get_label_text(label_num=1), scooped_items_preference), label_num=1)
                     else:
@@ -677,7 +677,7 @@ if __name__ == '__main__':
 
     if args.disable_logging:
         args.log_path = "results.log"
-    
+
     ice_cream_game = IceCreamGame(player_list, args)
     if not ice_cream_game.use_gui:
         ice_cream_game.play_all()
