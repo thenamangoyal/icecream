@@ -68,7 +68,7 @@ if __name__ == "__main__":
     with open(os.path.join(RESULT_DIR, "config.txt"), "w") as f:
         f.write("Family sizes {}\n".format(FAMILY_SIZES))
         f.write("Seed entropy {}\n".format(seed_sequence.entropy))
-    
+
     base_tournament_configs = []
     for family_size in FAMILY_SIZES:
         player_lists = get_player_lists(family_size)
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         config = tuple(list(base_config) + [seeds[i]])
         tournament_configs.append(config)
 
-    out_fn = os.path.join(RESULT_DIR, "aggregate_results.csv")
+    out_fn = os.path.join(RESULT_DIR, "aggregate_results_family_sizes_{}.csv".format("-".join(list(map(str, FAMILY_SIZES)))))
     with open(out_fn, "w") as csvf:
         header_df = pd.DataFrame([], columns=all_df_cols)
         header_df.to_csv(csvf, index=False, header=True)
