@@ -665,15 +665,17 @@ if __name__ == '__main__':
     parser.add_argument("--automatic", action="store_true", help="Start playing automatically in GUI mode")
     parser.add_argument("--seed", "-s", type=int, default=2021, help="Seed used by random number generator, specify 0 to use no seed and have different random behavior on each launch")
     parser.add_argument("--flavors", "-f", type=int, default=constants.default_num_flavor_choice, choices=num_flavor_choices, help="Number of flavors, specify 0 to use random number of flavors")
-    parser.add_argument("--port", "-p", type=int, default=8080, help="Port to start")
+    parser.add_argument("--port", type=int, default=8080, help="Port to start")
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
     parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
     parser.add_argument("--log_path", default="log", help="Directory path to dump log files, filepath if disable_logging is false")
     parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout in non GUI mode")
     parser.add_argument("--disable_logging", action="store_true", help="Disable Logging, log_path becomes path to file")
+    parser.add_argument("--players", "-p", default=["1", "2", "3", "4", "5", "7", "8", "9", "10"], nargs="+", help="List of players")
     args = parser.parse_args()
-    player_list = tuple(["1", "2", "3", "4", "5", "7", "8", "9", "10"])
+    player_list = tuple(args.players)
+    del args.players
 
     if args.disable_logging:
         args.log_path = "results.log"
