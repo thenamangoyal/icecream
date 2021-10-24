@@ -10,6 +10,7 @@ from multiprocessing import Pool
 ALL_PLAYERS_LIST = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
 FLAVORS = [2, 3, 4, 6, 9, 12]
 FAMILY_SIZES = [2, 3, 4, 6, 8, 9]
+REPEAT_COUNTS = [2,3,4,6]
 TRIALS = 10
 
 extra_df_cols = ["family_size", "flavors", "trial", "seed"]
@@ -33,6 +34,23 @@ def worker(worker_input):
         result[df_col] = eval(df_col)
     return result
 
+def get_player_lists(family_size):
+    if family_size <= len(ALL_PLAYERS_LIST):
+        player_lists = list(itertools.combinations(ALL_PLAYERS_LIST,family_size))
+        # repeat same player 
+        if family_size > 1:
+            for player in ALL_PLAYERS_LIST:
+                player_lists += [tuple([player])*family_size]
+    else:
+        player_lists = []
+        for repeat_count in REPEAT_COUNTS:
+            if family_size % repeat_count == 0:
+                m = family_size//repeat_count
+                base_player_lists = list(itertools.combinations(ALL_PLAYERS_LIST,m))
+                repeat_player_lists = [base_player_list*repeat_count for base_player_list in base_player_lists]
+                player_lists += repeat_player_lists
+    return player_lists
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="results", help="Directory path to dump results")
@@ -43,7 +61,7 @@ if __name__ == "__main__":
 
     base_tournament_configs = []
     for family_size in FAMILY_SIZES:
-        player_lists = itertools.combinations(ALL_PLAYERS_LIST,family_size)
+        player_lists = get_player_lists(family_size)
         for player_list in player_lists:
             for flavors in FLAVORS:
                 for trial in range(1, TRIALS+1):                    
