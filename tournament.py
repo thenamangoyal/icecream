@@ -62,6 +62,13 @@ if __name__ == "__main__":
     os.makedirs(RESULT_DIR, exist_ok=True)
     FAMILY_SIZES = args.family_size
 
+    print("Using family sizes {}".format(FAMILY_SIZES))
+    seed_sequence = np.random.SeedSequence(args.seed_entropy)
+    print("Using seed sequence with entropy {}".format(seed_sequence.entropy))
+    with open(os.path.join(RESULT_DIR, "config.txt"), "w") as f:
+        f.write("Family sizes {}\n".format(FAMILY_SIZES))
+        f.write("Seed entropy {}\n".format(seed_sequence.entropy))
+    
     base_tournament_configs = []
     for family_size in FAMILY_SIZES:
         player_lists = get_player_lists(family_size)
@@ -71,10 +78,6 @@ if __name__ == "__main__":
                     base_config = (family_size, player_list, flavors, trial)
                     base_tournament_configs.append(base_config)
 
-    seed_sequence = np.random.SeedSequence(args.seed_entropy)
-    print("Using seed sequence with entropy {}".format(seed_sequence.entropy))
-    with open(os.path.join(RESULT_DIR, "seed_entropy.txt"), "w") as f:
-        f.write("{}\n".format(seed_sequence.entropy))
     seeds = seed_sequence.generate_state(len(base_tournament_configs), dtype=np.uint64)
 
     tournament_configs = []
