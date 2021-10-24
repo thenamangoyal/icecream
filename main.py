@@ -162,7 +162,7 @@ class IceCreamGame():
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
             player_preference = self.rng.permutation(self.flavors).tolist()
-            self.logger.info("Adding player {} with preference {}".format(player_name, player_preference))
+            self.logger.info("Adding player {} from class {} with preference {}".format(player_name, player_class.__module__, player_preference))
             player = player_class(player_preference, self.rng, self.__get_player_logger(player_name))
             self.players.append(player)
             self.player_preferences.append(player_preference)
