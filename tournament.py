@@ -51,6 +51,9 @@ if __name__ == "__main__":
                     base_tournament_configs.append(base_config)
     
     seed_sequence = np.random.SeedSequence(args.seed_entropy)
+    print("Using seed sequence with entropy {}".format(seed_sequence.entropy))
+    with open(os.path.join(RESULT_DIR, "seed_entropy"), "w") as f:  
+        f.write("{}\n".format(seed_sequence.entropy))
     seeds = seed_sequence.generate_state(len(base_tournament_configs), dtype=np.uint64)
 
     tournament_configs = []
