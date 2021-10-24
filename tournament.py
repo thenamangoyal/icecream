@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import itertools
+from tqdm import tqdm
 from main import IceCreamGame, return_vals
 
 def generate_args(flavors, log_path, seed):
@@ -23,22 +24,24 @@ os.makedirs(RESULT_DIR, exist_ok=True)
 df_cols = ["family_size", "flavors", "trial"]
 
 results = []
-for family_size in FAMILY_SIZES:
-    player_lists = itertools.combinations(ALL_PLAYERS_LIST,family_size)
-    for player_list in player_lists:
-        for flavors in FLAVORS:
-            for trial in range(1, TRIALS+1):
-                print("Running with {} size family with members {} flavors {} trial {}".format(family_size, player_list, flavors, trial))
-                seed = seed_sequence.generate_state(1, dtype=np.uint64)[0]
-                log_path = "{}_size_family_{}_flavors_{}_trial_{}.log".format(family_size, "-".join(player_list), flavors, trial)
-                log_path = os.path.join(RESULT_DIR, "logs", log_path)
-                args = generate_args(flavors=flavors, log_path=log_path, seed=seed)
-                ice_cream_game = IceCreamGame(player_list=player_list, args=args)
-                ice_cream_game.play_all()
-                result = ice_cream_game.get_state()
-                for df_col in df_cols:
-                    result[df_col] = eval(df_col)
-                results.append(result)
+with tqdm() as pbar:
+    for family_size in FAMILY_SIZES:
+        player_lists = itertools.combinations(ALL_PLAYERS_LIST,family_size)
+        for player_list in player_lists:
+            for flavors in FLAVORS:
+                for trial in range(1, TRIALS+1):
+                    # print("Running with {} size family with members {} flavors {} trial {}".format(family_size, player_list, flavors, trial))
+                    seed = seed_sequence.generate_state(1, dtype=np.uint64)[0]
+                    log_path = "{}_size_family_{}_flavors_{}_trial_{}.log".format(family_size, "-".join(player_list), flavors, trial)
+                    log_path = os.path.join(RESULT_DIR, "logs", log_path)
+                    args = generate_args(flavors=flavors, log_path=log_path, seed=seed)
+                    ice_cream_game = IceCreamGame(player_list=player_list, args=args)
+                    ice_cream_game.play_all()
+                    result = ice_cream_game.get_state()
+                    for df_col in df_cols:
+                        result[df_col] = eval(df_col)
+                    results.append(result)
+                    pbar.update(1)
 
 if len(results) > 0:
     results_df = pd.DataFrame(results, columns=df_cols+return_vals)
