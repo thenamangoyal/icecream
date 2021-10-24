@@ -15,7 +15,8 @@ DEFAULT_SEED_ENTROPY = 233549467911963472626752780092567886323
 
 seed_sequence = np.random.SeedSequence()
 
-df_cols = ["family_size", "flavors", "trial"]
+extra_df_cols = ["family_size", "flavors", "trial"]
+all_df_cols = extra_df_cols+return_vals
 
 def generate_args(flavors, log_path, seed):
     args = argparse.Namespace(address='127.0.0.1', automatic=False, disable_logging=True,disable_timeout=False, flavors=flavors, log_path=log_path, no_browser=False, no_gui=True, port=8080, seed=seed)
@@ -31,7 +32,7 @@ def worker(worker_input):
     ice_cream_game = IceCreamGame(player_list=player_list, args=args)
     ice_cream_game.play_all()
     result = ice_cream_game.get_state()
-    for df_col in df_cols:
+    for df_col in extra_df_cols:
         result[df_col] = eval(df_col)
     return result
 
@@ -49,7 +50,7 @@ if __name__ == "__main__":
 
     out_fn = os.path.join(RESULT_DIR, "aggregate_results.csv")
     with open(out_fn, "w") as csvf:
-        writer = csv.DictWriter(csvf, fieldnames=df_cols+return_vals)
+        writer = csv.DictWriter(csvf, fieldnames=all_df_cols)
         writer.writeheader()
         csvf.flush()
         for config in tqdm(tournament_configs):
