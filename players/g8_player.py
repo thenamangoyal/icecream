@@ -283,7 +283,7 @@ class Player:
                         #cell_score = len(preferences) - preferences.index(top_layer[coord])
                         #cell_score = self.get_unit_score(top_layer[coord], preferences)
                         total_score += self.get_unit_score(top_layer[coord], preferences)
-                        if self.scooping_strategy is 2:
+                        if self.scooping_strategy == 2:
                             for other_player_idx in range(len(self.preference_estimate)):
                                 if other_player_idx != self.player_idx:
                                     other_player_scores[other_player_idx] += self.get_unit_score(top_layer[coord], self.preference_estimate[other_player_idx])
