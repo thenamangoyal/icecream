@@ -141,3 +141,6 @@ dmypy.json
 # Debug log
 results.log
 log/
+
+# Tournament
+results/
