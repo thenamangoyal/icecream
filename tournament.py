@@ -9,7 +9,6 @@ from multiprocessing import Pool
 
 ALL_PLAYERS_LIST = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
 FLAVORS = [2, 3, 4, 6, 9, 12]
-FAMILY_SIZES = [2, 3, 4, 6, 8, 9, 12]
 REPEAT_COUNTS = [2, 3, 4, 6, 12]
 TRIALS = 10
 
@@ -57,9 +56,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="results", help="Directory path to dump results")
     parser.add_argument("--seed_entropy", "-s", type=np.uint64, help="Seed used to generate seed for each game")
+    parser.add_argument("--family_size", "-f", default=[2, 3, 4, 6, 8, 9, 12], nargs="+", type=int, help="List of size of family")
     args = parser.parse_args()
     RESULT_DIR = args.result_dir
     os.makedirs(RESULT_DIR, exist_ok=True)
+    FAMILY_SIZES = args.family_size
 
     base_tournament_configs = []
     for family_size in FAMILY_SIZES:
