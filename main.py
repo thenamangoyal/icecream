@@ -24,7 +24,7 @@ from players.g9_player import Player as G9_Player
 from players.g10_player import Player as G10_Player
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
-
+return_vals = ["player_names", "final_scores", "winner_list", "player_scores", "player_preferences", "served", "total_time_sorted", "turns_received", "timeout_count", "error_count"]
 
 class TimeoutException(Exception):   # Custom exception class
     pass
@@ -125,6 +125,10 @@ class IceCreamGame():
         self.served_this_turn = None
         self.end_message_printed = False
 
+        self.final_scores = None
+        self.winner_list = None
+        self.total_time_sorted = None
+
         if self.use_gui:
             start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, args.automatic))
         else:
@@ -132,7 +136,7 @@ class IceCreamGame():
 
     def get_state(self):
         return_dict = dict()
-        for val in ["player_names", "player_preferences", "served", "time_taken", "turns_received", "timeout_count", "error_count", "player_scores"]:
+        for val in return_vals:
             return_dict[val] = getattr(self, val)
         return return_dict
 
@@ -221,10 +225,11 @@ class IceCreamGame():
                 self.logger.info("{} took {} steps, total time {:.3f}s, avg step time {:.3f}s, max step time {:.3f}s".format(self.player_names[player_idx], player_time_taken_flatten.size, np.sum(player_time_taken_flatten), np.mean(player_time_taken_flatten), np.amax(player_time_taken_flatten)))
                 total_time[player_idx] = np.sum(player_time_taken_flatten)
             self.logger.info("Total time taken by all players {:.3f}s".format(np.sum(total_time)))
-            total_time_order = np.argsort(total_time)[::-1]
+            total_time_sort_idx = np.argsort(total_time)[::-1]
+            self.total_time_sorted = [(self.player_names[player_idx], total_time[player_idx]) for player_idx in total_time_sort_idx]
             self.logger.info("Players sorted by total time")
-            for player_idx in total_time_order:
-                self.logger.info("{} took {:.3f}s".format(self.player_names[player_idx], total_time[player_idx]))
+            for (player_name, player_total_time) in self.total_time_sorted:
+                self.logger.info("{} took {:.3f}s".format(player_name, player_total_time))
             
             for player_idx, player_served in enumerate(self.served):
                 self.logger.info("{} final bowl {}".format(self.player_names[player_idx],player_served))
@@ -250,11 +255,15 @@ class IceCreamGame():
                 else:
                     final_scores.append(np.mean([score, np.mean(other_player_scores)]))
                 self.logger.info("{} final score: {}".format(self.player_names[player_idx], final_scores[player_idx]))
-            final_scores = np.array(final_scores)
-            winner_list = np.argwhere(final_scores == np.amax(final_scores))
-            self.logger.info("Winner{}: {}".format("s" if winner_list.shape[0] > 1 else "", ", ".join([self.player_names[i[0]] for i in winner_list])))
+            
+            self.final_scores = np.array(final_scores)
+
+            winner_list_idx = np.argwhere(self.final_scores == np.amax(self.final_scores))
+            self.winner_list = [self.player_names[i[0]] for i in winner_list_idx]
+            
+            self.logger.info("Winner{}: {}".format("s" if len(self.winner_list) > 1 else "", ", ".join(self.winner_list)))
             if self.use_gui:
-                self.ice_cream_app.set_label_text("Winner{}: {}".format("s" if winner_list.shape[0] > 1 else "", ", ".join([self.player_names[i[0]] for i in winner_list])), label_num=1)
+                self.ice_cream_app.set_label_text("Winner{}: {}".format("s" if len(self.winner_list) > 1 else "", ", ".join(self.winner_list)), label_num=1)
 
     def __turn_end(self, new_next_player=None):
         self.processing_turn = False
@@ -672,4 +681,4 @@ if __name__ == '__main__':
     ice_cream_game = IceCreamGame(player_list, args)
     if not ice_cream_game.use_gui:
         ice_cream_game.play_all()
-        # ice_cream_game.get_state()
+        results = ice_cream_game.get_state()
