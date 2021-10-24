@@ -11,7 +11,6 @@ ALL_PLAYERS_LIST = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
 FLAVORS = [2, 3, 4, 6, 9, 12]
 FAMILY_SIZES = [2, 3, 4, 6, 8, 9]
 TRIALS = 10
-DEFAULT_SEED_ENTROPY = 233549467911963472626752780092567886323
 
 extra_df_cols = ["family_size", "flavors", "trial", "seed"]
 all_df_cols = extra_df_cols+return_vals
