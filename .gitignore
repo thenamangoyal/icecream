@@ -139,5 +139,5 @@ dmypy.json
 .metadata/
 
 # Debug log
-log
+results.log
 log/

@@ -665,6 +665,9 @@ if __name__ == '__main__':
     parser.add_argument("--disable_logging", action="store_true", help="Disable Logging, log_path becomes path to file")
     args = parser.parse_args()
     player_list = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
+
+    if args.disable_logging:
+        args.log_path = "results.log"
     
     ice_cream_game = IceCreamGame(player_list, args)
     if not ice_cream_game.use_gui:
