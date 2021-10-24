@@ -36,18 +36,16 @@ def worker(worker_input):
 
 def get_player_lists(family_size):
     if family_size <= len(ALL_PLAYERS_LIST):
-        player_lists = list(itertools.combinations(ALL_PLAYERS_LIST,family_size))
-        # repeat same player 
-        if family_size > 1:
-            for player in ALL_PLAYERS_LIST:
-                player_lists += [tuple([player])*family_size]
+        times_to_repeat =  [1, family_size]
     else:
-        player_lists = []
-        for repeat_count in REPEAT_COUNTS:
-            if family_size % repeat_count == 0:
-                m = family_size//repeat_count
-                base_player_lists = list(itertools.combinations(ALL_PLAYERS_LIST,m))
-                repeat_player_lists = [base_player_list*repeat_count for base_player_list in base_player_lists]
+        times_to_repeat = REPEAT_COUNTS
+    player_lists = []
+    for repeat_count in times_to_repeat:
+        if family_size % repeat_count == 0:
+            m = family_size//repeat_count
+            base_player_lists = list(itertools.combinations(ALL_PLAYERS_LIST,m))
+            repeat_player_lists = [base_player_list*repeat_count for base_player_list in base_player_lists]
+            if len(repeat_player_lists) > 0:
                 player_lists += repeat_player_lists
     return player_lists
 
