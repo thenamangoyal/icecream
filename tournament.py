@@ -9,7 +9,7 @@ from multiprocessing import Pool
 
 ALL_PLAYERS_LIST = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
 FLAVORS = [2, 3, 4, 6, 9, 12]
-FAMILY_SIZES = [2, 3, 4, 6, 8, 9]
+FAMILY_SIZES = [2, 3, 4, 6, 8, 9, 12]
 REPEAT_COUNTS = [2,3,4,6]
 TRIALS = 10
 
