@@ -24,7 +24,7 @@ from players.g9_player import Player as G9_Player
 from players.g10_player import Player as G10_Player
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
-
+return_vals = ["player_names", "final_scores", "winner_list", "player_scores", "player_preferences", "served", "total_time_sorted", "turns_received", "timeout_count", "error_count"]
 
 class TimeoutException(Exception):   # Custom exception class
     pass
@@ -58,6 +58,7 @@ class PlayerLoggingFilter(logging.Filter):
 class IceCreamGame():
     def __init__(self, player_list, args):
         self.use_gui = not(args.no_gui)
+        self.do_logging = not(args.disable_logging)
         if not self.use_gui:
             self.use_timeout = not(args.disable_timeout)
         else:
@@ -65,18 +66,25 @@ class IceCreamGame():
         
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
-        self.log_dir = os.path.abspath(args.log_dir)
-        os.makedirs(self.log_dir, exist_ok=True)
         # create file handler which logs even debug messages
-        fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
-        fh.setLevel(logging.DEBUG)
-        fh.setFormatter(logging.Formatter('%(message)s'))
-        fh.addFilter(MainLoggingFilter(__name__))
-        rfh = logging.FileHandler(os.path.join(self.log_dir, 'results.log'), mode="w")
+        if self.do_logging:
+            self.log_dir = os.path.abspath(args.log_path)
+            os.makedirs(self.log_dir, exist_ok=True)
+            fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
+            fh.setLevel(logging.DEBUG)
+            fh.setFormatter(logging.Formatter('%(message)s'))
+            fh.addFilter(MainLoggingFilter(__name__))
+            self.logger.addHandler(fh)
+            result_path = os.path.join(self.log_dir, "results.log")
+        else:
+            result_path = os.path.abspath(args.log_path)
+            self.log_dir = os.path.dirname(result_path)
+            os.makedirs(self.log_dir, exist_ok=True)
+
+        rfh = logging.FileHandler(result_path, mode="w")
         rfh.setLevel(logging.INFO)
         rfh.setFormatter(logging.Formatter('%(message)s'))
         rfh.addFilter(MainLoggingFilter(__name__))
-        self.logger.addHandler(fh)
         self.logger.addHandler(rfh)
 
         if args.seed == 0:
@@ -117,6 +125,10 @@ class IceCreamGame():
         self.served_this_turn = None
         self.end_message_printed = False
 
+        self.final_scores = None
+        self.winner_list = None
+        self.total_time_sorted = None
+
         if self.use_gui:
             start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, args.automatic))
         else:
@@ -124,7 +136,7 @@ class IceCreamGame():
 
     def get_state(self):
         return_dict = dict()
-        for val in ["player_names", "player_preferences", "served", "time_taken", "turns_received", "timeout_count", "error_count", "player_scores"]:
+        for val in return_vals:
             return_dict[val] = getattr(self, val)
         return return_dict
 
@@ -162,7 +174,7 @@ class IceCreamGame():
     def __add_player(self, player_class, player_name):
         if player_name not in self.player_names:
             player_preference = self.rng.permutation(self.flavors).tolist()
-            self.logger.info("Adding player {} with preference {}".format(player_name, player_preference))
+            self.logger.info("Adding player {} from class {} with preference {}".format(player_name, player_class.__module__, player_preference))
             player = player_class(player_preference, self.rng, self.__get_player_logger(player_name))
             self.players.append(player)
             self.player_preferences.append(player_preference)
@@ -181,12 +193,13 @@ class IceCreamGame():
         player_logger = logging.getLogger("{}.{}".format(__name__, player_name))
         player_logger.setLevel(logging.INFO)
 
-        # add handler to self.logger with filtering
-        player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
-        player_fh.setLevel(logging.DEBUG)
-        player_fh.setFormatter(logging.Formatter('%(message)s'))
-        player_fh.addFilter(PlayerLoggingFilter(player_name))
-        self.logger.addHandler(player_fh)
+        if self.do_logging:
+            # add handler to self.logger with filtering
+            player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
+            player_fh.setLevel(logging.DEBUG)
+            player_fh.setFormatter(logging.Formatter('%(message)s'))
+            player_fh.addFilter(PlayerLoggingFilter(player_name))
+            self.logger.addHandler(player_fh)
         return player_logger
 
     def __assign_next_player(self):
@@ -212,10 +225,11 @@ class IceCreamGame():
                 self.logger.info("{} took {} steps, total time {:.3f}s, avg step time {:.3f}s, max step time {:.3f}s".format(self.player_names[player_idx], player_time_taken_flatten.size, np.sum(player_time_taken_flatten), np.mean(player_time_taken_flatten), np.amax(player_time_taken_flatten)))
                 total_time[player_idx] = np.sum(player_time_taken_flatten)
             self.logger.info("Total time taken by all players {:.3f}s".format(np.sum(total_time)))
-            total_time_order = np.argsort(total_time)[::-1]
+            total_time_sort_idx = np.argsort(total_time)[::-1]
+            self.total_time_sorted = [(self.player_names[player_idx], total_time[player_idx]) for player_idx in total_time_sort_idx]
             self.logger.info("Players sorted by total time")
-            for player_idx in total_time_order:
-                self.logger.info("{} took {:.3f}s".format(self.player_names[player_idx], total_time[player_idx]))
+            for (player_name, player_total_time) in self.total_time_sorted:
+                self.logger.info("{} took {:.3f}s".format(player_name, player_total_time))
             
             for player_idx, player_served in enumerate(self.served):
                 self.logger.info("{} final bowl {}".format(self.player_names[player_idx],player_served))
@@ -241,11 +255,15 @@ class IceCreamGame():
                 else:
                     final_scores.append(np.mean([score, np.mean(other_player_scores)]))
                 self.logger.info("{} final score: {}".format(self.player_names[player_idx], final_scores[player_idx]))
-            final_scores = np.array(final_scores)
-            winner_list = np.argwhere(final_scores == np.amax(final_scores))
-            self.logger.info("Winner{}: {}".format("s" if winner_list.shape[0] > 1 else "", ", ".join([self.player_names[i[0]] for i in winner_list])))
+            
+            self.final_scores = np.array(final_scores)
+
+            winner_list_idx = np.argwhere(self.final_scores == np.amax(self.final_scores))
+            self.winner_list = [self.player_names[i[0]] for i in winner_list_idx]
+            
+            self.logger.info("Winner{}: {}".format("s" if len(self.winner_list) > 1 else "", ", ".join(self.winner_list)))
             if self.use_gui:
-                self.ice_cream_app.set_label_text("Winner{}: {}".format("s" if winner_list.shape[0] > 1 else "", ", ".join([self.player_names[i[0]] for i in winner_list])), label_num=1)
+                self.ice_cream_app.set_label_text("Winner{}: {}".format("s" if len(self.winner_list) > 1 else "", ", ".join(self.winner_list)), label_num=1)
 
     def __turn_end(self, new_next_player=None):
         self.processing_turn = False
@@ -651,12 +669,16 @@ if __name__ == '__main__':
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
     parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
-    parser.add_argument("--log_dir", default="log", help="Path to dump log files")
+    parser.add_argument("--log_path", default="log", help="Directory path to dump log files, filepath if disable_logging is false")
     parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout in non GUI mode")
+    parser.add_argument("--disable_logging", action="store_true", help="Disable Logging, log_path becomes path to file")
     args = parser.parse_args()
-    player_list = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
+    player_list = tuple(["1", "2", "3", "4", "5", "7", "8", "9", "10"])
+
+    if args.disable_logging:
+        args.log_path = "results.log"
     
     ice_cream_game = IceCreamGame(player_list, args)
     if not ice_cream_game.use_gui:
         ice_cream_game.play_all()
-        # ice_cream_game.get_state()
+        result = ice_cream_game.get_state()
