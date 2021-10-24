@@ -7,14 +7,6 @@ from tqdm import tqdm
 from main import IceCreamGame, return_vals
 from multiprocessing import Pool
 
-ALL_PLAYERS_LIST = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
-FLAVORS = [2, 3, 4, 6, 9, 12]
-REPEAT_COUNTS = [2, 3, 4, 6, 12]
-TRIALS = 10
-
-extra_df_cols = ["family_size", "flavors", "trial", "seed"]
-all_df_cols = extra_df_cols+return_vals
-
 
 def generate_args(flavors, log_path, seed):
     args = argparse.Namespace(address='127.0.0.1', automatic=False, disable_logging=True, disable_timeout=False, flavors=flavors, log_path=log_path, no_browser=False, no_gui=True, port=8080, seed=seed)
@@ -22,7 +14,7 @@ def generate_args(flavors, log_path, seed):
 
 
 def worker(worker_input):
-    global RESULT_DIR
+    global RESULT_DIR, extra_df_cols
     family_size, player_list, flavors, trial, seed = worker_input
     # print("Running with {} size family with members {} flavors {} trial {} seed {}".format(family_size, player_list, flavors, trial, seed))
     log_path = "{}_size_family_{}_flavors_{}_trial_{}.log".format(family_size, "-".join(player_list), flavors, trial)
@@ -36,19 +28,14 @@ def worker(worker_input):
     return result
 
 
-def get_player_lists(family_size):
-    if family_size <= len(ALL_PLAYERS_LIST):
-        times_to_repeat = [1, family_size]
-    else:
-        times_to_repeat = REPEAT_COUNTS
+def get_player_lists(family_size, repeat_count):
     player_lists = []
-    for repeat_count in times_to_repeat:
-        if family_size % repeat_count == 0:
-            m = family_size//repeat_count
-            base_player_lists = list(itertools.combinations(ALL_PLAYERS_LIST, m))
-            repeat_player_lists = [base_player_list*repeat_count for base_player_list in base_player_lists]
-            if len(repeat_player_lists) > 0:
-                player_lists += repeat_player_lists
+    if family_size % repeat_count == 0:
+        m = family_size//repeat_count
+        base_player_lists = list(itertools.combinations(ALL_PLAYERS_LIST, m))
+        repeat_player_lists = [base_player_list*repeat_count for base_player_list in base_player_lists]
+        if len(repeat_player_lists) > 0:
+            player_lists += repeat_player_lists
     return player_lists
 
 
@@ -62,6 +49,14 @@ if __name__ == "__main__":
     os.makedirs(RESULT_DIR, exist_ok=True)
     FAMILY_SIZES = args.family_size
 
+    ALL_PLAYERS_LIST = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
+    FLAVORS = [2, 3, 4, 6, 9, 12]
+    REPEAT_COUNTS = [2, 3, 4, 6, 12]
+    TRIALS = 10
+
+    extra_df_cols = ["family_size", "flavors", "trial", "seed"]
+    all_df_cols = extra_df_cols+return_vals
+
     print("Using family sizes {}".format(FAMILY_SIZES))
     seed_sequence = np.random.SeedSequence(args.seed_entropy)
     print("Using seed sequence with entropy {}".format(seed_sequence.entropy))
@@ -71,12 +66,18 @@ if __name__ == "__main__":
 
     base_tournament_configs = []
     for family_size in FAMILY_SIZES:
-        player_lists = get_player_lists(family_size)
-        for player_list in player_lists:
-            for flavors in FLAVORS:
-                for trial in range(1, TRIALS+1):
-                    base_config = (family_size, player_list, flavors, trial)
-                    base_tournament_configs.append(base_config)
+        if family_size <= len(ALL_PLAYERS_LIST):
+            times_to_repeat = [1, family_size]
+        else:
+            times_to_repeat = REPEAT_COUNTS
+        player_lists = []
+        for repeat_count in times_to_repeat:
+            player_lists = get_player_lists(family_size, repeat_count)
+            for player_list in player_lists:
+                for flavors in FLAVORS:
+                    for trial in range(1, TRIALS+1):
+                        base_config = (family_size, player_list, flavors, trial)
+                        base_tournament_configs.append(base_config)
 
     seeds = seed_sequence.generate_state(len(base_tournament_configs), dtype=np.uint64)
 
