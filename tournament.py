@@ -17,8 +17,7 @@ def worker(worker_input):
     global RESULT_DIR, extra_df_cols
     family_size, player_list, flavors, trial, seed = worker_input
     # print("Running with {} size family with members {} flavors {} trial {} seed {}".format(family_size, player_list, flavors, trial, seed))
-    log_path = "{}_size_family_{}_flavors_{}_trial_{}.log".format(family_size, "-".join(player_list), flavors, trial)
-    log_path = os.path.join(RESULT_DIR, "logs", log_path)
+    log_path = None
     args = generate_args(flavors=flavors, log_path=log_path, seed=seed)
     ice_cream_game = IceCreamGame(player_list=player_list, args=args)
     ice_cream_game.play_all()
