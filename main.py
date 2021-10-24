@@ -681,4 +681,4 @@ if __name__ == '__main__':
     ice_cream_game = IceCreamGame(player_list, args)
     if not ice_cream_game.use_gui:
         ice_cream_game.play_all()
-        results = ice_cream_game.get_state()
+        result = ice_cream_game.get_state()
