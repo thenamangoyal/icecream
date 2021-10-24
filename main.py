@@ -58,6 +58,7 @@ class PlayerLoggingFilter(logging.Filter):
 class IceCreamGame():
     def __init__(self, player_list, args):
         self.use_gui = not(args.no_gui)
+        self.do_logging = not(args.disable_logging)
         if not self.use_gui:
             self.use_timeout = not(args.disable_timeout)
         else:
@@ -65,18 +66,25 @@ class IceCreamGame():
         
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
-        self.log_dir = os.path.abspath(args.log_dir)
-        os.makedirs(self.log_dir, exist_ok=True)
         # create file handler which logs even debug messages
-        fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
-        fh.setLevel(logging.DEBUG)
-        fh.setFormatter(logging.Formatter('%(message)s'))
-        fh.addFilter(MainLoggingFilter(__name__))
-        rfh = logging.FileHandler(os.path.join(self.log_dir, 'results.log'), mode="w")
+        if self.do_logging:
+            self.log_dir = os.path.abspath(args.log_path)
+            os.makedirs(self.log_dir, exist_ok=True)
+            fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
+            fh.setLevel(logging.DEBUG)
+            fh.setFormatter(logging.Formatter('%(message)s'))
+            fh.addFilter(MainLoggingFilter(__name__))
+            self.logger.addHandler(fh)
+            result_path = os.path.join(self.log_dir, "results.log")
+        else:
+            result_path = os.path.abspath(args.log_path)
+            self.log_dir = os.path.dirname(result_path)
+            os.makedirs(self.log_dir, exist_ok=True)
+
+        rfh = logging.FileHandler(result_path, mode="w")
         rfh.setLevel(logging.INFO)
         rfh.setFormatter(logging.Formatter('%(message)s'))
         rfh.addFilter(MainLoggingFilter(__name__))
-        self.logger.addHandler(fh)
         self.logger.addHandler(rfh)
 
         if args.seed == 0:
@@ -181,7 +189,7 @@ class IceCreamGame():
         player_logger = logging.getLogger("{}.{}".format(__name__, player_name))
         player_logger.setLevel(logging.INFO)
 
-        if self.use_gui:
+        if self.do_logging:
             # add handler to self.logger with filtering
             player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
             player_fh.setLevel(logging.DEBUG)
@@ -652,8 +660,9 @@ if __name__ == '__main__':
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
     parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
-    parser.add_argument("--log_dir", default="log", help="Path to dump log files")
+    parser.add_argument("--log_path", default="log", help="Directory path to dump log files, filepath if disable_logging is false")
     parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout in non GUI mode")
+    parser.add_argument("--disable_logging", action="store_true", help="Disable Logging, log_path becomes path to file")
     args = parser.parse_args()
     player_list = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
     
