@@ -64,8 +64,9 @@ if __name__ == "__main__":
         f.write("Family sizes {}\n".format(FAMILY_SIZES))
         f.write("Seed entropy {}\n".format(seed_sequence.entropy))
 
-    base_tournament_configs = []
+    base_tournament_configs = dict()
     for family_size in FAMILY_SIZES:
+        base_tournament_configs[family_size] = []
         if family_size <= len(ALL_PLAYERS_LIST):
             times_to_repeat = [1, family_size]
         else:
@@ -77,14 +78,18 @@ if __name__ == "__main__":
                 for flavors in FLAVORS:
                     for trial in range(1, TRIALS+1):
                         base_config = (family_size, player_list, flavors, trial)
-                        base_tournament_configs.append(base_config)
+                        base_tournament_configs[family_size].append(base_config)
 
-    seeds = seed_sequence.generate_state(len(base_tournament_configs), dtype=np.uint64)
+    config_lens = {family_size:len(base_tournament_configs[family_size]) for family_size in FAMILY_SIZES}
+    print("No of configs to run by family size\n{}".format(config_lens))
+    print("Total configs {}".format(sum(config_lens.values())))
+    seeds = seed_sequence.generate_state(sum(config_lens.values()), dtype=np.uint64)
 
     tournament_configs = []
-    for i, base_config in enumerate(base_tournament_configs):
-        config = tuple(list(base_config) + [seeds[i]])
-        tournament_configs.append(config)
+    for family_size in FAMILY_SIZES:
+        for i, base_config in enumerate(base_tournament_configs[family_size]):
+            config = tuple(list(base_config) + [seeds[i]])
+            tournament_configs.append(config)
 
     out_fn = os.path.join(RESULT_DIR, "aggregate_results_family_sizes_{}.csv".format("-".join(list(map(str, FAMILY_SIZES)))))
     with open(out_fn, "w") as csvf:
