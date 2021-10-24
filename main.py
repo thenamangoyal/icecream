@@ -139,7 +139,10 @@ class IceCreamGame():
     def get_state(self):
         return_dict = dict()
         for val in return_vals:
-            return_dict[val] = getattr(self, val)
+            value = getattr(self, val)
+            if isinstance(value, np.ndarray):
+                value = value.tolist()
+            return_dict[val] = value
         return return_dict
 
     def __log(self, message, label_num=0):
