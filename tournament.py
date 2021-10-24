@@ -1,7 +1,7 @@
 import os
 import argparse
 import numpy as np
-import csv
+import pandas as pd
 import itertools
 from tqdm import tqdm
 from main import IceCreamGame, return_vals
@@ -48,12 +48,14 @@ if __name__ == "__main__":
                     config = (family_size, player_list, flavors, trial)
                     tournament_configs.append(config)
 
-    out_fn = os.path.join(RESULT_DIR, "aggregate_results.csv")
+    out_fn = os.path.join(RESULT_DIR, "aggregate_results.csv")    
     with open(out_fn, "w") as csvf:
-        writer = csv.DictWriter(csvf, fieldnames=all_df_cols)
-        writer.writeheader()
+        header_df = pd.DataFrame([], columns=all_df_cols)
+        header_df.to_csv(csvf, index = False, header=True)
         csvf.flush()
         for config in tqdm(tournament_configs):
             result = worker(config)
-            writer.writerow(result)
+            df = pd.DataFrame([result], columns=all_df_cols)
+            df.to_csv(csvf, index=False, header=False)
             csvf.flush()
+            
