@@ -673,7 +673,7 @@ if __name__ == '__main__':
     parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout in non GUI mode")
     parser.add_argument("--disable_logging", action="store_true", help="Disable Logging, log_path becomes path to file")
     args = parser.parse_args()
-    player_list = ["1", "2", "3", "4", "5", "7", "8", "9", "10"]
+    player_list = tuple(["1", "2", "3", "4", "5", "7", "8", "9", "10"])
 
     if args.disable_logging:
         args.log_path = "results.log"
