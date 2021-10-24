@@ -67,9 +67,9 @@ class IceCreamGame():
             self.use_timeout = False
 
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
         # create file handler which logs even debug messages
         if self.do_logging:
+            self.logger.setLevel(logging.DEBUG)
             self.log_dir = os.path.abspath(args.log_path)
             os.makedirs(self.log_dir, exist_ok=True)
             fh = logging.FileHandler(os.path.join(self.log_dir, 'debug.log'), mode="w")
@@ -78,16 +78,24 @@ class IceCreamGame():
             fh.addFilter(MainLoggingFilter(__name__))
             self.logger.addHandler(fh)
             result_path = os.path.join(self.log_dir, "results.log")
+            rfh = logging.FileHandler(result_path, mode="w")
+            rfh.setLevel(logging.INFO)
+            rfh.setFormatter(logging.Formatter('%(message)s'))
+            rfh.addFilter(MainLoggingFilter(__name__))
+            self.logger.addHandler(rfh)
         else:
-            result_path = os.path.abspath(args.log_path)
-            self.log_dir = os.path.dirname(result_path)
-            os.makedirs(self.log_dir, exist_ok=True)
-
-        rfh = logging.FileHandler(result_path, mode="w")
-        rfh.setLevel(logging.INFO)
-        rfh.setFormatter(logging.Formatter('%(message)s'))
-        rfh.addFilter(MainLoggingFilter(__name__))
-        self.logger.addHandler(rfh)
+            if args.log_path:
+                self.logger.setLevel(logging.INFO)
+                result_path = os.path.abspath(args.log_path)
+                self.log_dir = os.path.dirname(result_path)
+                os.makedirs(self.log_dir, exist_ok=True)
+                rfh = logging.FileHandler(result_path, mode="w")
+                rfh.setLevel(logging.INFO)
+                rfh.setFormatter(logging.Formatter('%(message)s'))
+                rfh.addFilter(MainLoggingFilter(__name__))
+                self.logger.addHandler(rfh)
+            else:
+                self.logger.setLevel(logging.ERROR)
 
         if args.seed == 0:
             args.seed = None
@@ -194,15 +202,17 @@ class IceCreamGame():
 
     def __get_player_logger(self, player_name):
         player_logger = logging.getLogger("{}.{}".format(__name__, player_name))
-        player_logger.setLevel(logging.INFO)
 
         if self.do_logging:
+            player_logger.setLevel(logging.INFO)
             # add handler to self.logger with filtering
             player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
             player_fh.setLevel(logging.DEBUG)
             player_fh.setFormatter(logging.Formatter('%(message)s'))
             player_fh.addFilter(PlayerLoggingFilter(player_name))
             self.logger.addHandler(player_fh)
+        else:
+            player_logger.setLevel(logging.ERROR)
         return player_logger
 
     def __assign_next_player(self):
