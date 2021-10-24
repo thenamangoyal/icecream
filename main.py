@@ -181,12 +181,13 @@ class IceCreamGame():
         player_logger = logging.getLogger("{}.{}".format(__name__, player_name))
         player_logger.setLevel(logging.INFO)
 
-        # add handler to self.logger with filtering
-        player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
-        player_fh.setLevel(logging.DEBUG)
-        player_fh.setFormatter(logging.Formatter('%(message)s'))
-        player_fh.addFilter(PlayerLoggingFilter(player_name))
-        self.logger.addHandler(player_fh)
+        if self.use_gui:
+            # add handler to self.logger with filtering
+            player_fh = logging.FileHandler(os.path.join(self.log_dir, '{}.log'.format(player_name)), mode="w")
+            player_fh.setLevel(logging.DEBUG)
+            player_fh.setFormatter(logging.Formatter('%(message)s'))
+            player_fh.addFilter(PlayerLoggingFilter(player_name))
+            self.logger.addHandler(player_fh)
         return player_logger
 
     def __assign_next_player(self):
