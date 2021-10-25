@@ -688,7 +688,7 @@ if __name__ == '__main__':
     parser.add_argument("--log_path", default="log", help="Directory path to dump log files, filepath if disable_logging is false")
     parser.add_argument("--disable_timeout", "-time", action="store_true", help="Disable Timeout in non GUI mode")
     parser.add_argument("--disable_logging", action="store_true", help="Disable Logging, log_path becomes path to file")
-    parser.add_argument("--players", "-p", default=["1", "2", "3", "4", "5", "7", "8", "9", "10"], nargs="+", help="List of players")
+    parser.add_argument("--players", "-p", default=["1", "2", "3", "4", "5", "7", "8", "9", "10"], nargs="+", help="List of players space separated")
     args = parser.parse_args()
     player_list = tuple(args.players)
     del args.players
