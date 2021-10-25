@@ -96,6 +96,7 @@ class IceCreamGame():
                 self.logger.addHandler(rfh)
             else:
                 self.logger.setLevel(logging.ERROR)
+                self.logger.disabled = True
 
         if args.seed == 0:
             args.seed = None
@@ -213,6 +214,8 @@ class IceCreamGame():
             self.logger.addHandler(player_fh)
         else:
             player_logger.setLevel(logging.ERROR)
+            player_logger.disabled = True
+
         return player_logger
 
     def __assign_next_player(self):
