@@ -24,6 +24,8 @@ You can also specify the optional parameters below to disable GUI, disable brows
 usage: main.py [-h] [--automatic] [--seed SEED]
                [--flavors {2,3,4,5,6,8,9,10,12,0}] [--port PORT]
                [--address ADDRESS] [--no_browser] [--no_gui]
+               [--log_path LOG_PATH] [--disable_timeout] [--disable_logging]
+               [--players PLAYERS [PLAYERS ...]]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -34,11 +36,18 @@ optional arguments:
   --flavors {2,3,4,5,6,8,9,10,12,0}, -f {2,3,4,5,6,8,9,10,12,0}
                         Number of flavors, specify 0 to use random number of
                         flavors
-  --port PORT, -p PORT  Port to start
+  --port PORT           Port to start
   --address ADDRESS, -a ADDRESS
                         Address
   --no_browser, -nb     Disable browser launching in GUI mode
   --no_gui, -ng         Disable GUI
+  --log_path LOG_PATH   Directory path to dump log files, filepath if
+                        disable_logging is false
+  --disable_timeout, -time
+                        Disable Timeout in non GUI mode
+  --disable_logging     Disable Logging, log_path becomes path to file
+  --players PLAYERS [PLAYERS ...], -p PLAYERS [PLAYERS ...]
+                        List of players space separated
 ```
 
 ## Debugging
