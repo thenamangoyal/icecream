@@ -6,7 +6,7 @@
 
 ## Installation
 
-Requires **python3.6**
+Requires **python3.6** or higher
 
 ```bash
 pip install -r requirements.txt
