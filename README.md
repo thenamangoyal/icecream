@@ -1,12 +1,14 @@
 # Project 2: Ice Cream
 
+Project 2 Icecream - COMS 4444 Fall 2021 Programming and Problem Solving
+
 <http://www.cs.columbia.edu/~kar/4444f21/node19.html>
 
 [Documentation](https://docs.google.com/document/d/1wCQZNEupmkwjPrOVFU3S3sMxz16ph3gBDZg0aunx46Q/edit?usp=sharing)
 
 ## Installation
 
-Requires **python3.6**
+Requires **python3.6** or higher
 
 ```bash
 pip install -r requirements.txt

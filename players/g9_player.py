@@ -144,7 +144,7 @@ class Player:
 
     def get_scoop_size(self, curr_level, pos):
         """
-        curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 8 to 0, where 8 is highest level at start and 0 means no icecream left at this level
+        curr_level (np.ndarray): Numpy 2d array of size (24, 15) containing current level at each cell location from 7 to 0, where 7 is highest level at start and -1 means no icecream left at this level
         pos (Tuple[int,int]): Position of top left of scoop
 
         Returns:
