@@ -141,7 +141,14 @@ class IceCreamGame():
         self.total_time_sorted = None
 
         if self.use_gui:
-            start(IceCreamApp, address=args.address, port=args.port, start_browser=not(args.no_browser), update_interval=0.5, userdata=(self, args.automatic))
+            config = dict()
+            config["address"] = args.address
+            config["start_browser"] = not(args.no_browser)
+            config["update_interval"] = 0.5
+            config["userdata"] = (self, args.automatic)
+            if args.port != -1:
+                config["port"] = args.port
+            start(IceCreamApp, **config)
         else:
             self.logger.debug("No GUI flag specified")
 
@@ -684,7 +691,7 @@ if __name__ == '__main__':
     parser.add_argument("--automatic", action="store_true", help="Start playing automatically in GUI mode")
     parser.add_argument("--seed", "-s", type=int, default=2021, help="Seed used by random number generator, specify 0 to use no seed and have different random behavior on each launch")
     parser.add_argument("--flavors", "-f", type=int, default=constants.default_num_flavor_choice, choices=num_flavor_choices, help="Number of flavors, specify 0 to use random number of flavors")
-    parser.add_argument("--port", type=int, default=8080, help="Port to start")
+    parser.add_argument("--port", type=int, default=8080, help="Port to start, specify -1 to auto-assign")
     parser.add_argument("--address", "-a", type=str, default="127.0.0.1", help="Address")
     parser.add_argument("--no_browser", "-nb", action="store_true", help="Disable browser launching in GUI mode")
     parser.add_argument("--no_gui", "-ng", action="store_true", help="Disable GUI")
