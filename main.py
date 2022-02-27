@@ -359,6 +359,9 @@ class IceCreamGame():
                 self.ice_cream_app.update_score_table()
                 self.ice_cream_app.update_table()
             self.__turn_end(new_next_player)
+        
+        if self.is_game_ended() and not self.end_message_printed:
+            self.__game_end()
 
     def __check_action(self, action_values_dict):
         is_valid = False
