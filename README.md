@@ -1,5 +1,8 @@
 # Project 2: Ice Cream
 
+## Disclaimer
+This project belongs to Department of Computer Science, Columbia University. It may be used for educational purposes with proper attribution and citation for the Authors - TAs and the Professor.
+
 ## Course Summary
 
 Course: COMS 4444 Programming and Problem Solving (Fall 2021)  
@@ -69,6 +72,3 @@ The code generates a `debug.log` on every execution, detailing all the turns and
 
 1. <https://remi.readthedocs.io/en/latest/remi.html>
 1. <https://github.com/dddomodossola/remi>
-
-## Disclaimer
-This project belongs to Department of Computer Science, Columbia University. It may be freely used for educational purposes with proper attribution.
