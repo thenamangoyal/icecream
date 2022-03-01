@@ -69,3 +69,6 @@ The code generates a `debug.log` on every execution, detailing all the turns and
 
 1. <https://remi.readthedocs.io/en/latest/remi.html>
 1. <https://github.com/dddomodossola/remi>
+
+## Disclaimer
+This project belongs to Department of Computer Science, Columbia University. It may be freely used for educational purposes with proper attribution.
