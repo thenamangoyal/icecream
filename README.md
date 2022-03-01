@@ -1,8 +1,17 @@
 # Project 2: Ice Cream
 
-Project 2 Icecream - COMS 4444 Fall 2021 Programming and Problem Solving
+## Course Summary
 
-<http://www.cs.columbia.edu/~kar/4444f21/node19.html>
+Course: COMS 4444 Programming and Problem Solving (Fall 2021)  
+Problem Description: http://www.cs.columbia.edu/~kar/4444f21/node18.html
+Course Website: http://www.cs.columbia.edu/~kar/4444f21  
+University: Columbia University  
+Instructor: Prof. Kenneth Ross  
+TA Designer for this project: Naman Goyal
+
+Teaching Assistants for Course:
+1. Griffin Adams
+1. Naman Goyal
 
 [Documentation](https://docs.google.com/document/d/1wCQZNEupmkwjPrOVFU3S3sMxz16ph3gBDZg0aunx46Q/edit?usp=sharing)
 
