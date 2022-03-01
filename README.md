@@ -1,7 +1,7 @@
 # Project 2: Ice Cream
 
-## Disclaimer
-This project belongs to Department of Computer Science, Columbia University. It may be used for educational purposes **with proper attribution and citation** for the Authors i.e TAs Naman Goyal, Griffin Adams and the Instructor - Prof. Kenneth Ross.
+## Citation and License
+This project belongs to Department of Computer Science, Columbia University. It may be used for educational purposes under Creative Commons **with proper attribution and citation** for the Authors i.e TAs Naman Goyal, Griffin Adams and the Instructor - Prof. Kenneth Ross.
 
 ## Course Summary
 
