@@ -20,6 +20,7 @@ Naman Goyal
 1. Griffin Adams
 1. Naman Goyal
 
+### All course projects
 Project 1: https://github.com/griff4692/chemotaxis  
 Project 2: https://github.com/thenamangoyal/icecream  
 Project 3: https://github.com/griff4692/coms4444_flowers/  
