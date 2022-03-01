@@ -10,7 +10,7 @@ Problem Description: http://www.cs.columbia.edu/~kar/4444f21/node18.html
 Course Website: http://www.cs.columbia.edu/~kar/4444f21  
 University: Columbia University  
 Instructor: Prof. Kenneth Ross  
-TA Designer for this project: Naman Goyal
+**TA Designer for this project: Naman Goyal**
 
 Teaching Assistants for Course:
 1. Griffin Adams
