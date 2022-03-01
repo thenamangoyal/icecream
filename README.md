@@ -10,6 +10,7 @@ Problem Description: http://www.cs.columbia.edu/~kar/4444f21/node19.html
 Course Website: http://www.cs.columbia.edu/~kar/4444f21  
 University: Columbia University  
 Instructor: Prof. Kenneth Ross  
+Project Language: Python
 
 ### TA Designer for this project
 
