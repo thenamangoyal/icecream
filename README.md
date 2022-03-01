@@ -16,10 +16,10 @@ Teaching Assistants for Course:
 1. Griffin Adams
 1. Naman Goyal
 
-Project 1: https://github.com/griff4692/chemotaxis
-Project 2: https://github.com/thenamangoyal/icecream
-Project 3: https://github.com/griff4692/coms4444_flowers/
-Project 4: https://github.com/thenamangoyal/polygolf
+Project 1: https://github.com/griff4692/chemotaxis  
+Project 2: https://github.com/thenamangoyal/icecream  
+Project 3: https://github.com/griff4692/coms4444_flowers/  
+Project 4: https://github.com/thenamangoyal/polygolf  
 
 [Documentation](https://docs.google.com/document/d/1wCQZNEupmkwjPrOVFU3S3sMxz16ph3gBDZg0aunx46Q/edit?usp=sharing)
 
