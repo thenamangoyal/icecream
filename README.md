@@ -1,7 +1,7 @@
 # Project 2: Ice Cream
 
 ## Citation and License
-This project belongs to Department of Computer Science, Columbia University. It may be used for educational purposes under Creative Commons **with proper attribution and citation** for the author TAs **Naman Goyal (First Author), Griffin Adams and the Instructor, Prof. Kenneth Ross**.
+This project belongs to Department of Computer Science, Columbia University. It may be used for educational purposes under Creative Commons **with proper attribution and citation** for the author TAs **Naman Goyal (First Author), and the Instructor, Prof. Kenneth Ross**.
 
 ## Summary
 
@@ -11,14 +11,6 @@ Course Website: http://www.cs.columbia.edu/~kar/4444f21
 University: Columbia University  
 Instructor: Prof. Kenneth Ross  
 Project Language: Python
-
-### TA Designer for this project
-
-Naman Goyal
-
-### Teaching Assistants for Course
-1. Griffin Adams
-1. Naman Goyal
 
 ### All course projects
 Project 1: https://github.com/griff4692/chemotaxis  
@@ -35,6 +27,10 @@ Requires **python3.6** or higher
 ```bash
 pip install -r requirements.txt
 ```
+
+## Demo
+
+![Icecream](https://github.com/thenamangoyal/icecream/assets/22537996/a61b02af-daec-46e7-be81-46eeba8bbbec)
 
 ## Usage
 
